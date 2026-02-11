@@ -9,10 +9,18 @@ use PuyuPe\SiproInternalApiCore\Http\InternalHeaders;
 
 final class HmacVerifier
 {
+    /** @var callable(): int */
+    private $currentTimeProvider;
+
+    /**
+     * @param callable(): int|null $currentTimeProvider
+     */
     public function __construct(
         private readonly HmacSigner $signer = new HmacSigner(),
-        private readonly int $allowedClockSkewSeconds = 300
+        private readonly int $allowedClockSkewSeconds = 300,
+        ?callable $currentTimeProvider = null
     ) {
+        $this->currentTimeProvider = $currentTimeProvider ?? static fn (): int => time();
     }
 
     /**
@@ -122,7 +130,8 @@ final class HmacVerifier
         }
 
         $sentAt = (int) $timestamp;
+        $now = ($this->currentTimeProvider)();
 
-        return abs(time() - $sentAt) <= $this->allowedClockSkewSeconds;
+        return abs($now - $sentAt) <= $this->allowedClockSkewSeconds;
     }
 }
