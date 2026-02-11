@@ -6,38 +6,27 @@ namespace PuyuPe\SiproInternalApiCore\Security\Hmac;
 
 final class CanonicalRequest
 {
-    /**
-     * @param array<string, string> $headers
-     */
     public static function build(
         string $method,
         string $path,
-        array $headers,
-        string $body,
         string $timestamp,
-        string $nonce
+        string $nonce,
+        string $rawBody
     ): string {
-        $normalizedHeaders = [];
-        foreach ($headers as $name => $value) {
-            $normalizedHeaders[strtolower(trim($name))] = trim($value);
-        }
-
-        ksort($normalizedHeaders);
-
-        $headerStringParts = [];
-        foreach ($normalizedHeaders as $name => $value) {
-            $headerStringParts[] = sprintf('%s:%s', $name, $value);
-        }
-
-        $headersPart = implode("\n", $headerStringParts);
+        $pathOnly = explode('?', trim($path), 2)[0];
+        $normalizedPath = '/' . ltrim($pathOnly, '/');
 
         return implode("\n", [
             strtoupper(trim($method)),
-            '/' . ltrim(trim($path), '/'),
-            $headersPart,
-            hash('sha256', $body),
+            $normalizedPath,
             trim($timestamp),
             trim($nonce),
+            self::bodySha256Hex($rawBody),
         ]);
+    }
+
+    public static function bodySha256Hex(string $rawBody): string
+    {
+        return hash('sha256', $rawBody);
     }
 }

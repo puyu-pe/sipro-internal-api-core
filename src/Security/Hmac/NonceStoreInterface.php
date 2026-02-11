@@ -8,5 +8,5 @@ interface NonceStoreInterface
 {
     public function has(string $nonce): bool;
 
-    public function save(string $nonce, int $ttlSeconds): void;
+    public function put(string $nonce, int $ttlSeconds): void;
 }

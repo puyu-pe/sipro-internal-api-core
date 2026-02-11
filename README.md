@@ -104,31 +104,81 @@ $activate = ActivateTenantRequest::fromArray([
 
 ## HMAC: canonical string, firma y verificación
 
+Headers requeridos:
+- `X-Internal-KeyId`
+- `X-Internal-Timestamp` (unix epoch seconds)
+- `X-Internal-Nonce`
+- `X-Internal-Signature`
+
+Canonical string **v1 exacto**:
+
+```text
+{METHOD}\n{PATH}\n{TIMESTAMP}\n{NONCE}\n{BODY_SHA256_HEX}
+```
+
+Ejemplo concreto de firmado (Control Plane):
+
 ```php
 <?php
 
-use PuyuPe\SiproInternalApiCore\Security\Hmac\CanonicalRequest;
 use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacSigner;
-use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacVerifier;
 
-$canonical = CanonicalRequest::build(
-    method: 'POST',
-    path: '/internal/v1/tenants',
-    headers: [
-        'Content-Type' => 'application/json',
-        'X-Internal-Api-Key' => $apiKey,
-    ],
-    body: $rawBody,
-    timestamp: $timestamp,
-    nonce: $nonce,
-);
+$method = 'POST';
+$path = '/internal/v1/tenants';
+$rawBody = json_encode(['tenant_uuid' => '6fd22e43-c8a7-4f02-9f8f-31157a4f1b74']);
 
 $signer = new HmacSigner();
-$signature = $signer->sign($canonical, $sharedSecret);
+$headers = $signer->buildSignedHeaders(
+    method: $method,
+    path: $path,
+    rawBody: $rawBody,
+    keyId: 'cp-key-01',
+    secret: 'super-shared-secret',
+    timestampNow: (string) time(),
+    nonce: 'nonce-123', // opcional, útil para tests
+);
 
-$verifier = new HmacVerifier();
-$isValid = $verifier->verifySignature($canonical, $signature, $sharedSecret);
+// $headers incluye los 4 headers requeridos con firma HMAC SHA-256
 ```
+
+Ejemplo concreto de verificación (SaaS):
+
+```php
+<?php
+
+use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacVerifier;
+use PuyuPe\SiproInternalApiCore\Security\Hmac\NonceStoreInterface;
+
+final class InMemoryNonceStore implements NonceStoreInterface {
+    private array $data = [];
+
+    public function has(string $nonce): bool {
+        return isset($this->data[$nonce]) && $this->data[$nonce] >= time();
+    }
+
+    public function put(string $nonce, int $ttlSeconds): void {
+        $this->data[$nonce] = time() + $ttlSeconds;
+    }
+}
+
+$verifier = new HmacVerifier(allowedClockSkewSeconds: 300);
+$nonceStore = new InMemoryNonceStore();
+
+$result = $verifier->verify(
+    method: $method,
+    path: $path,
+    rawBody: $rawBody,
+    headers: $headers,
+    resolveSecretByKeyId: fn (string $keyId): ?string => $keyId === 'cp-key-01' ? 'super-shared-secret' : null,
+    nonceStore: $nonceStore, // opcional; si es null se omite anti-replay
+);
+
+if (! $result->ok) {
+    // $result->errorCode: INVALID_SIGNATURE | REQUEST_EXPIRED | NONCE_REPLAY | VALIDATION_ERROR
+}
+```
+
+> Nota: si `nonceStore` no se provee, la verificación de firma y timestamp funciona igual, pero se omite protección anti-replay.
 
 ## Error/Success response
 
