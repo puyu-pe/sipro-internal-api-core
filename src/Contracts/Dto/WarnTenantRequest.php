@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 
+use DateTimeImmutable;
 use PuyuPe\SiproInternalApiCore\Contracts\Validation\ValidationResult;
 
 final class WarnTenantRequest
 {
     public function __construct(
-        public readonly string $tenantCode,
-        public readonly string $reason,
-        public readonly ?string $warnedAt = null
+        public readonly string $message,
+        public readonly ?string $warnUntil = null,
+        public readonly ?string $severity = null
     ) {
     }
 
@@ -21,9 +22,9 @@ final class WarnTenantRequest
     public static function fromArray(array $payload): self
     {
         return new self(
-            tenantCode: (string) ($payload['tenant_code'] ?? ''),
-            reason: (string) ($payload['reason'] ?? ''),
-            warnedAt: isset($payload['warned_at']) ? (string) $payload['warned_at'] : null
+            message: trim((string) ($payload['message'] ?? '')),
+            warnUntil: self::nullableString($payload['warn_until'] ?? null),
+            severity: self::nullableString($payload['severity'] ?? null),
         );
     }
 
@@ -31,30 +32,60 @@ final class WarnTenantRequest
     {
         $errors = [];
 
-        if ($this->tenantCode === '') {
-            $errors['tenant_code'][] = 'tenant_code is required.';
+        $length = strlen($this->message);
+        if ($length < 1 || $length > 250) {
+            $errors[] = self::error('message', 'invalid_length', 'message must contain between 1 and 250 characters.');
         }
 
-        if ($this->reason === '') {
-            $errors['reason'][] = 'reason is required.';
+        if ($this->warnUntil !== null && !$this->isValidDate($this->warnUntil)) {
+            $errors[] = self::error('warn_until', 'invalid_date', 'warn_until must be in YYYY-MM-DD format.');
         }
 
-        if ($this->warnedAt !== null && strtotime($this->warnedAt) === false) {
-            $errors['warned_at'][] = 'warned_at must be a valid datetime string.';
+        if ($this->severity !== null && !in_array($this->severity, ['notice', 'warning'], true)) {
+            $errors[] = self::error('severity', 'invalid_value', 'severity must be one of: notice, warning.');
         }
 
-        return $errors === [] ? ValidationResult::ok() : ValidationResult::fail($errors);
+        return $errors === [] ? ValidationResult::success() : ValidationResult::failure($errors);
     }
 
     /**
-     * @return array{tenant_code: string, reason: string, warned_at: ?string}
+     * @return array{message: string, warn_until: ?string, severity: ?string}
      */
     public function toArray(): array
     {
         return [
-            'tenant_code' => $this->tenantCode,
-            'reason' => $this->reason,
-            'warned_at' => $this->warnedAt,
+            'message' => $this->message,
+            'warn_until' => $this->warnUntil,
+            'severity' => $this->severity,
+        ];
+    }
+
+    private function isValidDate(string $date): bool
+    {
+        $parsed = DateTimeImmutable::createFromFormat('Y-m-d', $date);
+
+        return $parsed !== false && $parsed->format('Y-m-d') === $date;
+    }
+
+    private static function nullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $string = trim((string) $value);
+        return $string === '' ? null : $string;
+    }
+
+    /**
+     * @return array{field: string, code: string, message: string}
+     */
+    private static function error(string $field, string $code, string $message): array
+    {
+        return [
+            'field' => $field,
+            'code' => $code,
+            'message' => $message,
         ];
     }
 }

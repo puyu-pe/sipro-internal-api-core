@@ -7,37 +7,48 @@ namespace PuyuPe\SiproInternalApiCore\Contracts\Validation;
 final class ValidationResult
 {
     /**
-     * @param array<string, list<string>> $errors
+     * @param list<array{field: string, code: string, message: string}> $errors
      */
     public function __construct(
-        private readonly bool $valid,
+        private readonly bool $ok,
         private readonly array $errors = []
     ) {
     }
 
-    public static function ok(): self
+    public static function success(): self
     {
-        return new self(true);
+        return new self(true, []);
     }
 
     /**
-     * @param array<string, list<string>> $errors
+     * @param list<array{field: string, code: string, message: string}> $errors
      */
-    public static function fail(array $errors): self
+    public static function failure(array $errors): self
     {
         return new self(false, $errors);
     }
 
-    public function isValid(): bool
+    public function ok(): bool
     {
-        return $this->valid;
+        return $this->ok;
     }
 
     /**
-     * @return array<string, list<string>>
+     * @return list<array{field: string, code: string, message: string}>
      */
     public function errors(): array
     {
         return $this->errors;
+    }
+
+    /**
+     * @return array{ok: bool, errors: list<array{field: string, code: string, message: string}>}
+     */
+    public function toArray(): array
+    {
+        return [
+            'ok' => $this->ok,
+            'errors' => $this->errors,
+        ];
     }
 }

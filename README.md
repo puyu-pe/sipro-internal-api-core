@@ -12,42 +12,108 @@ Paquete Composer **framework-agnostic** para estandarizar contratos DTO, utilida
 composer require puyu-pe/sipro-internal-api-core
 ```
 
-## Qué incluye
+## DTOs incluidos
 
-- DTOs de operaciones de tenant (`CreateTenantRequest`, `WarnTenantRequest`, `SuspendTenantRequest`, `ActivateTenantRequest`)
-- Resultado de validación (`ValidationResult`) con validación manual ligera
-- Construcción de canonical request para HMAC (`CanonicalRequest`)
-- Firma y verificación HMAC (`HmacSigner`, `HmacVerifier`)
-- Contrato para almacén de nonce (`NonceStoreInterface`)
-- Headers estándar internos (`InternalHeaders`)
-- Respuestas estándar (`SuccessResponse`, `ErrorResponse`)
-- Estándar de errores (`ErrorCode`, `InternalApiError`, `ErrorFactory`)
+- `CreateTenantRequest`
+- `WarnTenantRequest`
+- `SuspendTenantRequest`
+- `ActivateTenantRequest`
+- `ValidationResult` (`ok` + `errors`)
 
-## Ejemplo: validar DTO
+## Estructura de ValidationResult
+
+`validate()` retorna un `ValidationResult` sin excepciones:
+
+```php
+[
+  'ok' => false,
+  'errors' => [
+    ['field' => 'tenant_uuid', 'code' => 'invalid_uuid_v4', 'message' => '...'],
+  ],
+]
+```
+
+## Ejemplo CreateTenantRequest
 
 ```php
 <?php
 
 use PuyuPe\SiproInternalApiCore\Contracts\Dto\CreateTenantRequest;
 
-$dto = CreateTenantRequest::fromArray($payload);
+$dto = CreateTenantRequest::fromArray([
+    'tenant_uuid' => '6fd22e43-c8a7-4f02-9f8f-31157a4f1b74',
+    'tenant_name' => 'Acme SAC',
+    'ruc' => '20123456789',
+    'admin_user' => [
+        'email' => 'admin@acme.pe',
+        'name' => 'Admin Acme',
+        'temp_password' => 'Temporal123!',
+        // o set_password_token
+    ],
+    // defaults automáticos:
+    // timezone => America/Lima
+    // currency => PEN
+    // igv_rate => 0.18
+    'locale_config' => [],
+]);
+
 $result = $dto->validate();
 
-if (! $result->isValid()) {
-    // devolver error 422 con $result->errors()
+if (! $result->ok()) {
+    $errors = $result->errors();
 }
+
+$payload = $dto->toArray();
 ```
 
-## Ejemplo: construir canonical string
+Reglas principales de `CreateTenantRequest`:
+- `tenant_uuid`: requerido, UUID v4.
+- `tenant_name`: requerido, 3..150.
+- `ruc`: opcional; si viene, 11 dígitos.
+- `admin_user.email` y `admin_user.name`: requeridos.
+- `admin_user.temp_password` **o** `admin_user.set_password_token`: al menos uno.
+- `locale_config` aplica defaults si faltan campos.
+- `limits.*`: opcional, entero >= 0.
+- `features`: opcional, mapa `string => bool`.
+
+## Ejemplo Warn/Suspend/Activate
+
+```php
+<?php
+
+use PuyuPe\SiproInternalApiCore\Contracts\Dto\WarnTenantRequest;
+use PuyuPe\SiproInternalApiCore\Contracts\Dto\SuspendTenantRequest;
+use PuyuPe\SiproInternalApiCore\Contracts\Dto\ActivateTenantRequest;
+
+$warn = WarnTenantRequest::fromArray([
+    'message' => 'Pago pendiente',
+    'warn_until' => '2026-02-28',
+    'severity' => 'warning',
+]);
+
+$suspend = SuspendTenantRequest::fromArray([
+    'message' => 'Incumplimiento de pago',
+    'reason_code' => 'PAYMENT_OVERDUE',
+]);
+
+$activate = ActivateTenantRequest::fromArray([
+    'message' => 'Reactivación aprobada',
+    'clear_warn' => true,
+]);
+```
+
+## HMAC: canonical string, firma y verificación
 
 ```php
 <?php
 
 use PuyuPe\SiproInternalApiCore\Security\Hmac\CanonicalRequest;
+use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacSigner;
+use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacVerifier;
 
 $canonical = CanonicalRequest::build(
     method: 'POST',
-    path: '/internal/v1/tenants/create',
+    path: '/internal/v1/tenants',
     headers: [
         'Content-Type' => 'application/json',
         'X-Internal-Api-Key' => $apiKey,
@@ -56,66 +122,15 @@ $canonical = CanonicalRequest::build(
     timestamp: $timestamp,
     nonce: $nonce,
 );
-```
-
-La canonical string se arma como líneas separadas por `\n`:
-1. Método HTTP en mayúsculas.
-2. Path normalizado (`/foo/bar`).
-3. Headers relevantes en minúsculas, ordenados alfabéticamente, formato `header:value`.
-4. Hash SHA-256 hexadecimal del body.
-5. Timestamp.
-6. Nonce.
-
-## Ejemplo: firmar request
-
-```php
-<?php
-
-use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacSigner;
 
 $signer = new HmacSigner();
 $signature = $signer->sign($canonical, $sharedSecret);
 
-// enviar en header X-Internal-Signature
-```
-
-## Ejemplo: verificar request
-
-```php
-<?php
-
-use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacVerifier;
-use PuyuPe\SiproInternalApiCore\Security\Hmac\NonceStoreInterface;
-
-final class InMemoryNonceStore implements NonceStoreInterface {
-    private array $nonces = [];
-
-    public function has(string $nonce): bool {
-        return isset($this->nonces[$nonce]) && $this->nonces[$nonce] >= time();
-    }
-
-    public function save(string $nonce, int $ttlSeconds): void {
-        $this->nonces[$nonce] = time() + $ttlSeconds;
-    }
-}
-
 $verifier = new HmacVerifier();
-$nonceStore = new InMemoryNonceStore();
-
-if (! $verifier->isTimestampFresh($timestamp, 300)) {
-    // rechazar: timestamp expirado
-}
-
-if (! $verifier->isNonceValid($nonce, $nonceStore, 300)) {
-    // rechazar: replay detectado
-}
-
-if (! $verifier->verifySignature($canonical, $providedSignature, $sharedSecret)) {
-    // rechazar: firma inválida
-}
+$isValid = $verifier->verifySignature($canonical, $signature, $sharedSecret);
 ```
 
-## Ejemplo: respuestas estándar
+## Error/Success response
 
 ```php
 <?php
@@ -124,19 +139,9 @@ use PuyuPe\SiproInternalApiCore\Errors\ErrorFactory;
 use PuyuPe\SiproInternalApiCore\Http\Response\ErrorResponse;
 use PuyuPe\SiproInternalApiCore\Http\Response\SuccessResponse;
 
-$ok = new SuccessResponse(['tenant_code' => 'acme'], 'Tenant creado');
+$ok = new SuccessResponse(['tenant_uuid' => '...'], 'Tenant creado');
 $jsonOk = $ok->toJson();
 
-$error = ErrorFactory::invalidRequest('tenant_code es obligatorio');
-$errResponse = new ErrorResponse($error, ['tenant_code' => ['tenant_code is required.']]);
-$jsonError = $errResponse->toJson();
+$error = ErrorFactory::invalidRequest('Payload inválido');
+$jsonError = (new ErrorResponse($error))->toJson();
 ```
-
-## Convención de headers sugerida
-
-- `X-Internal-Api-Key`
-- `X-Internal-Signature`
-- `X-Internal-Timestamp`
-- `X-Internal-Nonce`
-
-Disponibles como constantes en `PuyuPe\SiproInternalApiCore\Http\InternalHeaders`.

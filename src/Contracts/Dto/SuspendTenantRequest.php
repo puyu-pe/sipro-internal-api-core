@@ -9,9 +9,8 @@ use PuyuPe\SiproInternalApiCore\Contracts\Validation\ValidationResult;
 final class SuspendTenantRequest
 {
     public function __construct(
-        public readonly string $tenantCode,
-        public readonly string $reason,
-        public readonly ?string $until = null
+        public readonly string $message,
+        public readonly ?string $reasonCode = null
     ) {
     }
 
@@ -21,9 +20,8 @@ final class SuspendTenantRequest
     public static function fromArray(array $payload): self
     {
         return new self(
-            tenantCode: (string) ($payload['tenant_code'] ?? ''),
-            reason: (string) ($payload['reason'] ?? ''),
-            until: isset($payload['until']) ? (string) $payload['until'] : null
+            message: trim((string) ($payload['message'] ?? '')),
+            reasonCode: self::nullableString($payload['reason_code'] ?? null),
         );
     }
 
@@ -31,30 +29,44 @@ final class SuspendTenantRequest
     {
         $errors = [];
 
-        if ($this->tenantCode === '') {
-            $errors['tenant_code'][] = 'tenant_code is required.';
+        if ($this->message === '') {
+            $errors[] = self::error('message', 'required', 'message is required.');
         }
 
-        if ($this->reason === '') {
-            $errors['reason'][] = 'reason is required.';
-        }
-
-        if ($this->until !== null && strtotime($this->until) === false) {
-            $errors['until'][] = 'until must be a valid datetime string.';
-        }
-
-        return $errors === [] ? ValidationResult::ok() : ValidationResult::fail($errors);
+        return $errors === [] ? ValidationResult::success() : ValidationResult::failure($errors);
     }
 
     /**
-     * @return array{tenant_code: string, reason: string, until: ?string}
+     * @return array{message: string, reason_code: ?string}
      */
     public function toArray(): array
     {
         return [
-            'tenant_code' => $this->tenantCode,
-            'reason' => $this->reason,
-            'until' => $this->until,
+            'message' => $this->message,
+            'reason_code' => $this->reasonCode,
+        ];
+    }
+
+    private static function nullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $string = trim((string) $value);
+        return $string === '' ? null : $string;
+    }
+
+    /**
+     * @return array{field: string, code: string, message: string}
+     */
+    private static function error(string $field, string $code, string $message): array
+    {
+        return [
+            'field' => $field,
+            'code' => $code,
+            'message' => $message,
         ];
     }
 }
+

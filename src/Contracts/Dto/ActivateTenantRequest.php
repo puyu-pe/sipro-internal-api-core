@@ -9,8 +9,8 @@ use PuyuPe\SiproInternalApiCore\Contracts\Validation\ValidationResult;
 final class ActivateTenantRequest
 {
     public function __construct(
-        public readonly string $tenantCode,
-        public readonly ?string $activatedAt = null
+        public readonly ?string $message = null,
+        public readonly mixed $clearWarn = null
     ) {
     }
 
@@ -20,8 +20,8 @@ final class ActivateTenantRequest
     public static function fromArray(array $payload): self
     {
         return new self(
-            tenantCode: (string) ($payload['tenant_code'] ?? ''),
-            activatedAt: isset($payload['activated_at']) ? (string) $payload['activated_at'] : null
+            message: self::nullableString($payload['message'] ?? null),
+            clearWarn: isset($payload['clear_warn']) ? $payload['clear_warn'] : null,
         );
     }
 
@@ -29,25 +29,43 @@ final class ActivateTenantRequest
     {
         $errors = [];
 
-        if ($this->tenantCode === '') {
-            $errors['tenant_code'][] = 'tenant_code is required.';
+        if ($this->clearWarn !== null && !is_bool($this->clearWarn)) {
+            $errors[] = self::error('clear_warn', 'invalid_boolean', 'clear_warn must be boolean.');
         }
 
-        if ($this->activatedAt !== null && strtotime($this->activatedAt) === false) {
-            $errors['activated_at'][] = 'activated_at must be a valid datetime string.';
-        }
-
-        return $errors === [] ? ValidationResult::ok() : ValidationResult::fail($errors);
+        return $errors === [] ? ValidationResult::success() : ValidationResult::failure($errors);
     }
 
     /**
-     * @return array{tenant_code: string, activated_at: ?string}
+     * @return array{message: ?string, clear_warn: mixed}
      */
     public function toArray(): array
     {
         return [
-            'tenant_code' => $this->tenantCode,
-            'activated_at' => $this->activatedAt,
+            'message' => $this->message,
+            'clear_warn' => $this->clearWarn,
+        ];
+    }
+
+    private static function nullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $string = trim((string) $value);
+        return $string === '' ? null : $string;
+    }
+
+    /**
+     * @return array{field: string, code: string, message: string}
+     */
+    private static function error(string $field, string $code, string $message): array
+    {
+        return [
+            'field' => $field,
+            'code' => $code,
+            'message' => $message,
         ];
     }
 }
