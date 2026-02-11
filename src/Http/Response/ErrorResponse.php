@@ -8,31 +8,33 @@ use PuyuPe\SiproInternalApiCore\Errors\InternalApiError;
 
 final class ErrorResponse
 {
-    /**
-     * @param array<string, list<string>> $details
-     */
     public function __construct(
-        private readonly InternalApiError $error,
-        private readonly array $details = []
+        private readonly InternalApiError $error
     ) {
     }
 
+    public static function fromError(InternalApiError $error): self
+    {
+        return new self($error);
+    }
+
     /**
-     * @return array{
-     *   success: false,
-     *   error: array{code: string, message: string, status: int, details: array<string, list<string>>}
-     * }
+     * @return array{ok: false, error: array{code: string, message: string, details?: array<string, mixed>}}
      */
     public function toArray(): array
     {
+        $error = [
+            'code' => $this->error->code->value,
+            'message' => $this->error->message,
+        ];
+
+        if ($this->error->details !== []) {
+            $error['details'] = $this->error->details;
+        }
+
         return [
-            'success' => false,
-            'error' => [
-                'code' => $this->error->code->value,
-                'message' => $this->error->message,
-                'status' => $this->error->httpStatus,
-                'details' => $this->details,
-            ],
+            'ok' => false,
+            'error' => $error,
         ];
     }
 

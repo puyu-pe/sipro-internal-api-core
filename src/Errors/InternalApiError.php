@@ -6,10 +6,13 @@ namespace PuyuPe\SiproInternalApiCore\Errors;
 
 final class InternalApiError
 {
+    /**
+     * @param array<string, mixed> $details
+     */
     public function __construct(
         public readonly ErrorCode $code,
         public readonly string $message,
-        public readonly int $httpStatus
+        public readonly array $details = []
     ) {
     }
 }

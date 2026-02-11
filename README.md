@@ -142,6 +142,26 @@ use PuyuPe\SiproInternalApiCore\Http\Response\SuccessResponse;
 $ok = new SuccessResponse(['tenant_uuid' => '...'], 'Tenant creado');
 $jsonOk = $ok->toJson();
 
-$error = ErrorFactory::invalidRequest('Payload inválido');
-$jsonError = (new ErrorResponse($error))->toJson();
+$error = ErrorFactory::tenantNotFound('6fd22e43-c8a7-4f02-9f8f-31157a4f1b74');
+$jsonError = ErrorResponse::fromError($error)->toJson();
 ```
+
+
+## Estándar mínimo de errores
+
+Formato JSON:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed.",
+    "details": {
+      "errors": []
+    }
+  }
+}
+```
+
+Códigos incluidos: `INVALID_SIGNATURE`, `REQUEST_EXPIRED`, `NONCE_REPLAY`, `VALIDATION_ERROR`, `TENANT_NOT_FOUND`, `TENANT_ALREADY_EXISTS`, `PROVISION_FAILED`, `DB_CREATE_FAILED`, `TEMPLATE_APPLY_FAILED`.
