@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+namespace PuyuPe\SiproInternalApiCore\Errors;
+
+enum ErrorCode: string
+{
+    case INVALID_SIGNATURE = 'INVALID_SIGNATURE';
+    case REQUEST_EXPIRED = 'REQUEST_EXPIRED';
+    case NONCE_REPLAY = 'NONCE_REPLAY';
+    case VALIDATION_ERROR = 'VALIDATION_ERROR';
+    case TENANT_NOT_FOUND = 'TENANT_NOT_FOUND';
+    case TENANT_ALREADY_EXISTS = 'TENANT_ALREADY_EXISTS';
+    case PROVISION_FAILED = 'PROVISION_FAILED';
+    case DB_CREATE_FAILED = 'DB_CREATE_FAILED';
+    case TEMPLATE_APPLY_FAILED = 'TEMPLATE_APPLY_FAILED';
+}
