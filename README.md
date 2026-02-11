@@ -1,112 +1,56 @@
-# puyu-pe/sipro-internal-api-core
+# puyupe/sipro-internal-api-core
 
-Paquete Composer **framework-agnostic** para estandarizar contratos DTO, utilidades de firma HMAC y formato de errores/respuestas para la API interna `/internal/v1` consumida por SIPRO.
+Paquete Composer framework-agnostic para integraciones entre **SIPRO Control Plane** y los **SaaS** en `/internal/v1`.
 
-## Requisitos
+## ¿Qué resuelve este paquete?
 
-- PHP >= 8.1
+1. **Contracts (DTOs)** para requests internos (ej. creación/estado de tenant).
+2. **HMAC** para firmado y verificación de requests entre servicios.
+3. **Errores estándar** para respuestas JSON consistentes (`ErrorResponse`).
 
-## Instalación
+> Objetivo: reducir código repetido y evitar diferencias de implementación entre servicios.
 
-```bash
-composer require puyu-pe/sipro-internal-api-core
-```
+## Payload de ejemplo: CreateTenantRequest
 
-## DTOs incluidos
-
-- `CreateTenantRequest`
-- `WarnTenantRequest`
-- `SuspendTenantRequest`
-- `ActivateTenantRequest`
-- `ValidationResult` (`ok` + `errors`)
-
-## Estructura de ValidationResult
-
-`validate()` retorna un `ValidationResult` sin excepciones:
-
-```php
-[
-  'ok' => false,
-  'errors' => [
-    ['field' => 'tenant_uuid', 'code' => 'invalid_uuid_v4', 'message' => '...'],
-  ],
-]
-```
-
-## Ejemplo CreateTenantRequest
-
-```php
-<?php
-
-use PuyuPe\SiproInternalApiCore\Contracts\Dto\CreateTenantRequest;
-
-$dto = CreateTenantRequest::fromArray([
-    'tenant_uuid' => '6fd22e43-c8a7-4f02-9f8f-31157a4f1b74',
-    'tenant_name' => 'Acme SAC',
-    'ruc' => '20123456789',
-    'admin_user' => [
-        'email' => 'admin@acme.pe',
-        'name' => 'Admin Acme',
-        'temp_password' => 'Temporal123!',
-        // o set_password_token
-    ],
-    // defaults automáticos:
-    // timezone => America/Lima
-    // currency => PEN
-    // igv_rate => 0.18
-    'locale_config' => [],
-]);
-
-$result = $dto->validate();
-
-if (! $result->ok()) {
-    $errors = $result->errors();
+```json
+{
+  "tenant_uuid": "6fd22e43-c8a7-4f02-9f8f-31157a4f1b74",
+  "tenant_name": "Acme SAC",
+  "ruc": "20123456789",
+  "plan_code": "pro",
+  "billing_status": "active",
+  "admin_user": {
+    "email": "admin@acme.pe",
+    "name": "Admin Acme",
+    "temp_password": "Temporal123!"
+  },
+  "locale_config": {
+    "timezone": "America/Lima",
+    "currency": "PEN",
+    "igv_rate": 0.18,
+    "tax_mode": "included"
+  },
+  "series_config": {
+    "enabled": true
+  },
+  "limits": {
+    "max_users": 20,
+    "max_branches": 5,
+    "max_docs_month": 5000
+  },
+  "features": {
+    "inventory": true,
+    "billing": true
+  },
+  "notes": "Cliente migrado desde legacy"
 }
-
-$payload = $dto->toArray();
 ```
 
-Reglas principales de `CreateTenantRequest`:
-- `tenant_uuid`: requerido, UUID v4.
-- `tenant_name`: requerido, 3..150.
-- `ruc`: opcional; si viene, 11 dígitos.
-- `admin_user.email` y `admin_user.name`: requeridos.
-- `admin_user.temp_password` **o** `admin_user.set_password_token`: al menos uno.
-- `locale_config` aplica defaults si faltan campos.
-- `limits.*`: opcional, entero >= 0.
-- `features`: opcional, mapa `string => bool`.
-
-## Ejemplo Warn/Suspend/Activate
-
-```php
-<?php
-
-use PuyuPe\SiproInternalApiCore\Contracts\Dto\WarnTenantRequest;
-use PuyuPe\SiproInternalApiCore\Contracts\Dto\SuspendTenantRequest;
-use PuyuPe\SiproInternalApiCore\Contracts\Dto\ActivateTenantRequest;
-
-$warn = WarnTenantRequest::fromArray([
-    'message' => 'Pago pendiente',
-    'warn_until' => '2026-02-28',
-    'severity' => 'warning',
-]);
-
-$suspend = SuspendTenantRequest::fromArray([
-    'message' => 'Incumplimiento de pago',
-    'reason_code' => 'PAYMENT_OVERDUE',
-]);
-
-$activate = ActivateTenantRequest::fromArray([
-    'message' => 'Reactivación aprobada',
-    'clear_warn' => true,
-]);
-```
-
-## HMAC: canonical string, firma y verificación
+## Firma HMAC (Control Plane) — pasos
 
 Headers requeridos:
 - `X-Internal-KeyId`
-- `X-Internal-Timestamp` (unix epoch seconds)
+- `X-Internal-Timestamp`
 - `X-Internal-Nonce`
 - `X-Internal-Signature`
 
@@ -116,32 +60,40 @@ Canonical string **v1 exacto**:
 {METHOD}\n{PATH}\n{TIMESTAMP}\n{NONCE}\n{BODY_SHA256_HEX}
 ```
 
-Ejemplo concreto de firmado (Control Plane):
-
 ```php
 <?php
 
+use PuyuPe\SiproInternalApiCore\Security\Hmac\CanonicalRequest;
 use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacSigner;
 
 $method = 'POST';
 $path = '/internal/v1/tenants';
-$rawBody = json_encode(['tenant_uuid' => '6fd22e43-c8a7-4f02-9f8f-31157a4f1b74']);
+$rawBody = json_encode(['tenant_uuid' => '6fd22e43-c8a7-4f02-9f8f-31157a4f1b74'], JSON_THROW_ON_ERROR);
+$timestamp = (string) time();
+$nonce = bin2hex(random_bytes(16));
+$keyId = 'cp-key-01';
+$secret = 'super-shared-secret';
 
+// 1) BODY_SHA256_HEX
+$bodyHash = CanonicalRequest::bodySha256Hex($rawBody);
+
+// 2) Canonical string
+$canonical = CanonicalRequest::build($method, $path, $timestamp, $nonce, $rawBody);
+
+// 3) Firma con secret (hex por defecto)
 $signer = new HmacSigner();
-$headers = $signer->buildSignedHeaders(
-    method: $method,
-    path: $path,
-    rawBody: $rawBody,
-    keyId: 'cp-key-01',
-    secret: 'super-shared-secret',
-    timestampNow: (string) time(),
-    nonce: 'nonce-123', // opcional, útil para tests
-);
+$signature = $signer->sign($canonical, $secret, 'sha256', 'hex');
 
-// $headers incluye los 4 headers requeridos con firma HMAC SHA-256
+// 4) Armar headers
+$headers = [
+  'X-Internal-KeyId' => $keyId,
+  'X-Internal-Timestamp' => $timestamp,
+  'X-Internal-Nonce' => $nonce,
+  'X-Internal-Signature' => $signature,
+];
 ```
 
-Ejemplo concreto de verificación (SaaS):
+## Verificación HMAC en SaaS con `HmacVerifier`
 
 ```php
 <?php
@@ -149,57 +101,46 @@ Ejemplo concreto de verificación (SaaS):
 use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacVerifier;
 use PuyuPe\SiproInternalApiCore\Security\Hmac\NonceStoreInterface;
 
-final class InMemoryNonceStore implements NonceStoreInterface {
-    private array $data = [];
-
+final class RedisNonceStore implements NonceStoreInterface {
     public function has(string $nonce): bool {
-        return isset($this->data[$nonce]) && $this->data[$nonce] >= time();
+        // GET nonce
+        return false;
     }
 
     public function put(string $nonce, int $ttlSeconds): void {
-        $this->data[$nonce] = time() + $ttlSeconds;
+        // SETEX nonce ttlSeconds 1
     }
 }
 
 $verifier = new HmacVerifier(allowedClockSkewSeconds: 300);
-$nonceStore = new InMemoryNonceStore();
 
 $result = $verifier->verify(
-    method: $method,
-    path: $path,
+    method: 'POST',
+    path: '/internal/v1/tenants',
     rawBody: $rawBody,
     headers: $headers,
-    resolveSecretByKeyId: fn (string $keyId): ?string => $keyId === 'cp-key-01' ? 'super-shared-secret' : null,
-    nonceStore: $nonceStore, // opcional; si es null se omite anti-replay
+    // resolveSecretByKeyId: lookup seguro por KeyId
+    resolveSecretByKeyId: function (string $keyId): ?string {
+        return $keyId === 'cp-key-01' ? 'super-shared-secret' : null;
+    },
+    nonceStore: new RedisNonceStore(), // opcional, recomendado en producción
 );
 
 if (! $result->ok) {
-    // $result->errorCode: INVALID_SIGNATURE | REQUEST_EXPIRED | NONCE_REPLAY | VALIDATION_ERROR
+    // errorCode: VALIDATION_ERROR | REQUEST_EXPIRED | NONCE_REPLAY | INVALID_SIGNATURE
 }
 ```
 
-> Nota: si `nonceStore` no se provee, la verificación de firma y timestamp funciona igual, pero se omite protección anti-replay.
+Notas prácticas:
+- `HmacVerifier` valida timestamp dentro de ±300s (configurable).
+- `NonceStoreInterface` evita replay. Implementación típica:
+  - **Redis** (`SETEX` por nonce), o
+  - **tabla en DB master** con TTL/fecha de expiración.
+- Si no envías `nonceStore`, se verifica firma/timestamp pero sin protección anti-replay.
 
-## Error/Success response
+## Ejemplos de `ErrorResponse`
 
-```php
-<?php
-
-use PuyuPe\SiproInternalApiCore\Errors\ErrorFactory;
-use PuyuPe\SiproInternalApiCore\Http\Response\ErrorResponse;
-use PuyuPe\SiproInternalApiCore\Http\Response\SuccessResponse;
-
-$ok = new SuccessResponse(['tenant_uuid' => '...'], 'Tenant creado');
-$jsonOk = $ok->toJson();
-
-$error = ErrorFactory::tenantNotFound('6fd22e43-c8a7-4f02-9f8f-31157a4f1b74');
-$jsonError = ErrorResponse::fromError($error)->toJson();
-```
-
-
-## Estándar mínimo de errores
-
-Formato JSON:
+### 1) `VALIDATION_ERROR` con errores por campo
 
 ```json
 {
@@ -208,10 +149,35 @@ Formato JSON:
     "code": "VALIDATION_ERROR",
     "message": "Validation failed.",
     "details": {
-      "errors": []
+      "errors": [
+        {"field": "tenant_uuid", "code": "invalid_uuid_v4", "message": "tenant_uuid must be a valid UUID v4."},
+        {"field": "admin_user.email", "code": "invalid_email", "message": "admin_user.email must be a valid email address."}
+      ]
     }
   }
 }
 ```
 
-Códigos incluidos: `INVALID_SIGNATURE`, `REQUEST_EXPIRED`, `NONCE_REPLAY`, `VALIDATION_ERROR`, `TENANT_NOT_FOUND`, `TENANT_ALREADY_EXISTS`, `PROVISION_FAILED`, `DB_CREATE_FAILED`, `TEMPLATE_APPLY_FAILED`.
+### 2) `INVALID_SIGNATURE`
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "INVALID_SIGNATURE",
+    "message": "Invalid request signature."
+  }
+}
+```
+
+## Notas de seguridad
+
+- **No loguear secrets** (ni secretos HMAC ni credenciales de DB).
+- **No exponer connection strings** ni tokens sensibles en `error.details`.
+- Usa `keyId` para resolver secretos de forma rotativa y segura.
+
+## Versionado y compatibilidad
+
+- Este paquete está orientado al contrato `/internal/v1`.
+- Cambios incompatibles deben versionarse como nueva versión mayor del paquete y/o nueva ruta (`/internal/v2`).
+- Mantén signer/verifier con el mismo formato canonical v1 para asegurar interoperabilidad.
