@@ -4,47 +4,175 @@ Paquete Composer framework-agnostic para integraciones entre **SIPRO Control Pla
 
 ## ¿Qué resuelve este paquete?
 
-1. **Contracts (DTOs)** para requests internos (ej. creación/estado de tenant).
+1. **Contracts (DTOs)** para provisioning, ciclo de vida y clonado de tenants.
 2. **HMAC** para firmado y verificación de requests entre servicios.
 3. **Errores estándar** para respuestas JSON consistentes (`ErrorResponse`).
 
 > Objetivo: reducir código repetido y evitar diferencias de implementación entre servicios.
 
-## Payload de ejemplo: CreateTenantRequest
+## Payload de ejemplo: ProvisionPayloadDTO (createTenant)
 
 ```json
 {
-  "tenant_uuid": "6fd22e43-c8a7-4f02-9f8f-31157a4f1b74",
-  "tenant_name": "Acme SAC",
-  "ruc": "20123456789",
-  "plan_code": "pro",
-  "billing_status": "active",
-  "admin_user": {
+  "project": {
+    "name": "Acme Suite",
+    "code": "ACME",
+    "description": "Suite principal",
+    "billingCycle": "monthly",
+    "priceAgreed": 199.9,
+    "startDate": "2026-03-25",
+    "renewalDate": "2027-03-25",
+    "execStatus": "active",
+    "isActive": true,
+    "accessUrlCustom": "https://acme.sipro.app",
+    "accessUrls": {
+      "app": "https://acme.sipro.app",
+      "api": "https://api.acme.sipro.app"
+    },
+    "appKey": "acme-app-001",
+    "logo": null,
+    "address": "Av. Demo 123",
+    "phone": "+51 1 5555555",
     "email": "admin@acme.pe",
-    "name": "Admin Acme",
-    "temp_password": "Temporal123!"
+    "ubigeo": "150101",
+    "latitud": -12.0464,
+    "longitud": -77.0428,
+    "color": "#004c97",
+    "notes": "Cliente migrado desde legacy"
   },
-  "locale_config": {
-    "timezone": "America/Lima",
-    "currency": "PEN",
-    "igv_rate": 0.18,
-    "tax_mode": "included"
+  "client": {
+    "ruc": "20123456789",
+    "businessName": "Acme SAC",
+    "tradeName": "Acme"
   },
-  "series_config": {
-    "enabled": true
-  },
-  "limits": {
-    "max_users": 20,
-    "max_branches": 5,
-    "max_docs_month": 5000
-  },
-  "features": {
-    "inventory": true,
-    "billing": true
-  },
-  "notes": "Cliente migrado desde legacy"
+  "services": [
+    {
+      "key": "billing",
+      "externalId": "srv-01",
+      "code": "BILL",
+      "name": "Facturacion",
+      "description": "Modulo de facturacion",
+      "priceList": 99.0,
+      "defaultBillingCycle": "monthly",
+      "type": "core",
+      "accessUrl": "https://acme.sipro.app/billing",
+      "logo": null,
+      "credentials": [
+        {
+          "name": "Admin Acme",
+          "username": "admin",
+          "email": "admin@acme.pe",
+          "role": "owner",
+          "initialPassword": "Temporal123!",
+          "mustChangePassword": true
+        }
+      ],
+      "modules": [
+        {
+          "id": 10,
+          "externalId": "mod-01",
+          "name": "Ventas",
+          "description": "Ventas y cotizaciones",
+          "price": 20.0,
+          "isUnlimited": false,
+          "customPrice": null,
+          "quantity": 5
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "source": "control-plane",
+    "priority": "high"
+  }
 }
 ```
+
+## Ciclo de vida del tenant (warn / suspend / activate)
+
+`TenantLifecycleRequestDTO` (payload estandar para warn/suspend/activate):
+
+```json
+{
+  "appKey": "acme-app-001",
+  "projectCode": "ACME",
+  "reason": "PAYMENT_OVERDUE",
+  "requestedAt": "2026-03-25T10:00:00Z"
+}
+```
+
+`TenantLifecycleResponseDTO`:
+
+```json
+{
+  "appKey": "acme-app-001",
+  "projectCode": "ACME",
+  "status": "ok",
+  "systemStatus": "suspended"
+}
+```
+
+## Clonado de tenant (export / import)
+
+`TenantExportRequestDTO`:
+
+```json
+{
+  "appKey": "acme-app-001",
+  "projectCode": "ACME",
+  "reason": "MIGRATION"
+}
+```
+
+`TenantExportResponseDTO`:
+
+```json
+{
+  "appKey": "acme-app-001",
+  "projectCode": "ACME",
+  "dumpPath": "/mnt/backups/acme-20260325.sql.gz",
+  "checksum": "sha256:3f4b8c...",
+  "createdAt": "2026-03-25T10:35:00Z"
+}
+```
+
+`TenantImportRequestDTO`:
+
+```json
+{
+  "appKey": "acme-app-001",
+  "projectCode": "ACME",
+  "dumpPath": "/mnt/backups/acme-20260325.sql.gz",
+  "checksum": "sha256:3f4b8c..."
+}
+```
+
+`TenantImportResponseDTO`:
+
+```json
+{
+  "appKey": "acme-app-001",
+  "projectCode": "ACME",
+  "database": "acme_20260325",
+  "restored": true
+}
+```
+
+## Interfaces de adapters
+
+Provisioning:
+- `TenantProvisioningAdapterInterface::createTenant(ProvisionPayloadDTO $dto): ProvisionResponseDTO`
+
+Ciclo de vida:
+- `TenantLifecycleAdapterInterface::warnTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
+- `TenantLifecycleAdapterInterface::suspendTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
+- `TenantLifecycleAdapterInterface::activateTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
+
+Clonado:
+- `TenantCloneAdapterInterface::exportTenant(string $appKey, TenantExportRequestDTO $dto): TenantExportResponseDTO`
+- `TenantCloneAdapterInterface::importTenant(string $appKey, TenantImportRequestDTO $dto): TenantImportResponseDTO`
+
+Nota: `TenantAdapterInterface` agrupa provisioning + ciclo de vida. El clonado se mantiene separado en `TenantCloneAdapterInterface`.
 
 ## Firma HMAC (Control Plane) — pasos
 
