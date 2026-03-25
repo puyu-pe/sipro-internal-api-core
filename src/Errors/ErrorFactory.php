@@ -32,21 +32,21 @@ final class ErrorFactory
         return new InternalApiError(ErrorCode::NONCE_REPLAY, 'Replay request detected.');
     }
 
-    public static function tenantNotFound(string $tenantUuid): InternalApiError
+    public static function tenantNotFound(string $appKey): InternalApiError
     {
         return new InternalApiError(
             code: ErrorCode::TENANT_NOT_FOUND,
             message: 'Tenant not found.',
-            details: ['tenant_uuid' => $tenantUuid]
+            details: ['app_key' => $appKey]
         );
     }
 
-    public static function tenantAlreadyExists(string $tenantUuid): InternalApiError
+    public static function tenantAlreadyExists(string $appKey): InternalApiError
     {
         return new InternalApiError(
             code: ErrorCode::TENANT_ALREADY_EXISTS,
             message: 'Tenant already exists.',
-            details: ['tenant_uuid' => $tenantUuid]
+            details: ['app_key' => $appKey]
         );
     }
 
