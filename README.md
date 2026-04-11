@@ -88,16 +88,25 @@ Paquete Composer framework-agnostic para integraciones entre **SIPRO Control Pla
 }
 ```
 
-## Ciclo de vida del tenant (warn / suspend / activate)
+## Ciclo de vida del tenant (warn / suspend / activate / close / reopen)
 
-`TenantLifecycleRequestDTO` (payload estandar para warn/suspend/activate):
+`TenantLifecycleRequestDTO` (payload estándar para todas las acciones de ciclo de vida):
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `appKey` | `string` | Identificador del tenant |
+| `projectCode` | `string` | Código del proyecto |
+| `reason` | `?string` | Motivo de la acción (opcional) |
+| `requestedAt` | `?string` | ISO 8601 — cuándo se solicitó (opcional) |
+| `requestedBy` | `?string` | Identificador del operador que solicita la acción (opcional) |
 
 ```json
 {
   "appKey": "acme-app-001",
   "projectCode": "ACME",
   "reason": "PAYMENT_OVERDUE",
-  "requestedAt": "2026-03-25T10:00:00Z"
+  "requestedAt": "2026-03-25T10:00:00Z",
+  "requestedBy": "user-42"
 }
 ```
 
@@ -167,6 +176,8 @@ Ciclo de vida:
 - `TenantLifecycleAdapterInterface::warnTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
 - `TenantLifecycleAdapterInterface::suspendTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
 - `TenantLifecycleAdapterInterface::activateTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
+- `TenantLifecycleAdapterInterface::closeTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
+- `TenantLifecycleAdapterInterface::reopenTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
 
 Clonado:
 - `TenantCloneAdapterInterface::exportTenant(string $appKey, TenantExportRequestDTO $dto): TenantExportResponseDTO`
