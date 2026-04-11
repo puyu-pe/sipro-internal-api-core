@@ -10,7 +10,8 @@ final class TenantLifecycleRequestDTO
         public readonly string $appKey,
         public readonly string $projectCode,
         public readonly ?string $reason,
-        public readonly ?string $requestedAt
+        public readonly ?string $requestedAt,
+        public readonly ?string $requestedBy = null
     ) {
     }
 
@@ -23,7 +24,8 @@ final class TenantLifecycleRequestDTO
             appKey: (string) ($payload['appKey'] ?? ''),
             projectCode: (string) ($payload['projectCode'] ?? ''),
             reason: isset($payload['reason']) ? (string) $payload['reason'] : null,
-            requestedAt: isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null
+            requestedAt: isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null,
+            requestedBy: isset($payload['requestedBy']) ? (string) $payload['requestedBy'] : null
         );
     }
 
@@ -37,6 +39,7 @@ final class TenantLifecycleRequestDTO
             'projectCode' => $this->projectCode,
             'reason' => $this->reason,
             'requestedAt' => $this->requestedAt,
+            'requestedBy' => $this->requestedBy,
         ];
     }
 }

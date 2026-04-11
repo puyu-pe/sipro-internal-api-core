@@ -17,11 +17,46 @@ final class TenantLifecycleDTOTest extends TestCase
             'projectCode' => 'ACME',
             'reason' => 'PAYMENT_OVERDUE',
             'requestedAt' => '2026-03-25T10:00:00Z',
+            'requestedBy' => null,
         ];
 
         $dto = TenantLifecycleRequestDTO::fromArray($payload);
 
         self::assertSame($payload, $dto->toArray());
+    }
+
+    public function testRequestFromArrayWithRequestedBy(): void
+    {
+        $payload = [
+            'appKey' => 'acme-app-001',
+            'projectCode' => 'ACME',
+            'reason' => 'CLOSURE_REQUESTED',
+            'requestedAt' => '2026-04-10T12:00:00Z',
+            'requestedBy' => 'user-42',
+        ];
+
+        $dto = TenantLifecycleRequestDTO::fromArray($payload);
+
+        self::assertSame('user-42', $dto->requestedBy);
+        self::assertSame($payload, $dto->toArray());
+    }
+
+    public function testRequestFromArrayWithoutRequestedBy(): void
+    {
+        $payload = [
+            'appKey' => 'acme-app-001',
+            'projectCode' => 'ACME',
+            'reason' => null,
+            'requestedAt' => null,
+        ];
+
+        $dto = TenantLifecycleRequestDTO::fromArray($payload);
+
+        self::assertNull($dto->requestedBy);
+        self::assertSame(
+            array_merge($payload, ['requestedBy' => null]),
+            $dto->toArray()
+        );
     }
 
     public function testResponseToArray(): void
