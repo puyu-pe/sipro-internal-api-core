@@ -46,4 +46,31 @@ final class ErrorFactoryTest extends TestCase
         self::assertSame('[redacted]', $error->details['connection_string']);
         self::assertSame('[redacted]', $error->details['nested']['api_key']);
     }
+
+    public function testUserNotFoundReturnsCorrectCodeAndDetails(): void
+    {
+        $error = ErrorFactory::userNotFound(42, 'yubus-app-001');
+
+        self::assertSame(ErrorCode::USER_NOT_FOUND, $error->code);
+        self::assertSame('Target user not found.', $error->message);
+        self::assertSame(42, $error->details['target_user_id']);
+        self::assertSame('yubus-app-001', $error->details['app_key']);
+    }
+
+    public function testImpersonationFailedReturnsCorrectCodeAndSafeDetails(): void
+    {
+        $error = ErrorFactory::impersonationFailed('some reason', ['extra' => 'data']);
+
+        self::assertSame(ErrorCode::IMPERSONATION_FAILED, $error->code);
+        self::assertSame('Impersonation failed.', $error->message);
+        self::assertSame('some reason', $error->details['reason']);
+        self::assertSame('data', $error->details['extra']);
+    }
+
+    public function testImpersonationFailedRedactsSensitiveData(): void
+    {
+        $error = ErrorFactory::impersonationFailed(null, ['password' => 'secret123']);
+
+        self::assertSame('[redacted]', $error->details['password']);
+    }
 }

@@ -51,7 +51,7 @@ final class ErrorFactory
     }
 
     /**
-     * @param array<string, mixed> $details
+     * @param  array<string, mixed>  $details
      */
     public static function provisionFailed(?string $reason = null, array $details = []): InternalApiError
     {
@@ -63,7 +63,7 @@ final class ErrorFactory
     }
 
     /**
-     * @param array<string, mixed> $details
+     * @param  array<string, mixed>  $details
      */
     public static function dbCreateFailed(?string $reason = null, array $details = []): InternalApiError
     {
@@ -75,7 +75,7 @@ final class ErrorFactory
     }
 
     /**
-     * @param array<string, mixed> $details
+     * @param  array<string, mixed>  $details
      */
     public static function templateApplyFailed(?string $reason = null, array $details = []): InternalApiError
     {
@@ -86,8 +86,29 @@ final class ErrorFactory
         );
     }
 
+    public static function userNotFound(int $userId, string $appKey): InternalApiError
+    {
+        return new InternalApiError(
+            code: ErrorCode::USER_NOT_FOUND,
+            message: 'Target user not found.',
+            details: ['target_user_id' => $userId, 'app_key' => $appKey]
+        );
+    }
+
     /**
-     * @param array<string, mixed> $details
+     * @param  array<string, mixed>  $details
+     */
+    public static function impersonationFailed(?string $reason = null, array $details = []): InternalApiError
+    {
+        return new InternalApiError(
+            code: ErrorCode::IMPERSONATION_FAILED,
+            message: 'Impersonation failed.',
+            details: self::safeDetails($details, $reason)
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
      * @return array<string, mixed>
      */
     private static function safeDetails(array $details, ?string $reason): array
@@ -100,7 +121,7 @@ final class ErrorFactory
     }
 
     /**
-     * @param array<string, mixed> $details
+     * @param  array<string, mixed>  $details
      * @return array<string, mixed>
      */
     private static function sanitize(array $details): array
@@ -122,16 +143,19 @@ final class ErrorFactory
 
             if ($isSensitive) {
                 $safe[$keyString] = '[redacted]';
+
                 continue;
             }
 
             if (is_array($value)) {
                 $safe[$keyString] = self::sanitize($value);
+
                 continue;
             }
 
             if (is_scalar($value) || $value === null) {
                 $safe[$keyString] = $value;
+
                 continue;
             }
 
