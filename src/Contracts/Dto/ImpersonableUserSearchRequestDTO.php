@@ -15,7 +15,7 @@ final class ImpersonableUserSearchRequestDTO
     public const MAX_PER_PAGE = 50;
 
     public function __construct(
-        public readonly string $appKey,
+        public readonly string $resolveKey,
         public readonly string $projectCode,
         public readonly ?string $query = null,
         public readonly int $page = 1,
@@ -30,7 +30,7 @@ final class ImpersonableUserSearchRequestDTO
      */
     public static function fromArray(array $payload): self
     {
-        $appKey = (string) ($payload['appKey'] ?? '');
+        $resolveKey = (string) ($payload['resolveKey'] ?? '');
         $projectCode = (string) ($payload['projectCode'] ?? '');
         $query = isset($payload['query']) ? trim((string) $payload['query']) : null;
         $page = isset($payload['page']) ? (int) $payload['page'] : 1;
@@ -38,11 +38,11 @@ final class ImpersonableUserSearchRequestDTO
         $requestedBy = isset($payload['requestedBy']) ? (string) $payload['requestedBy'] : null;
         $requestedAt = isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null;
 
-        if ($appKey === '') {
+        if ($resolveKey === '') {
             throw new InternalApiError(
                 ErrorCode::VALIDATION_ERROR,
                 'Invalid request payload.',
-                ['errors' => [['field' => 'appKey', 'code' => 'required', 'message' => 'appKey is required.']]]
+                ['errors' => [['field' => 'resolveKey', 'code' => 'required', 'message' => 'resolveKey is required.']]]
             );
         }
 
@@ -55,7 +55,7 @@ final class ImpersonableUserSearchRequestDTO
         }
 
         return new self(
-            appKey: $appKey,
+            resolveKey: $resolveKey,
             projectCode: $projectCode,
             query: $query === '' ? null : $query,
             page: $page,
@@ -106,7 +106,7 @@ final class ImpersonableUserSearchRequestDTO
     public function toArray(): array
     {
         return [
-            'appKey' => $this->appKey,
+            'resolveKey' => $this->resolveKey,
             'projectCode' => $this->projectCode,
             'query' => $this->query,
             'page' => $this->page,

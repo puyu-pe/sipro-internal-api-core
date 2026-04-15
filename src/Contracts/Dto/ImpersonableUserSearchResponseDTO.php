@@ -10,7 +10,7 @@ final class ImpersonableUserSearchResponseDTO
      * @param list<ImpersonableUserListItemDTO> $users
      */
     public function __construct(
-        public readonly string $appKey,
+        public readonly string $resolveKey,
         public readonly string $projectCode,
         public readonly array $users,
         public readonly int $page,
@@ -26,7 +26,7 @@ final class ImpersonableUserSearchResponseDTO
     public function toArray(): array
     {
         return [
-            'appKey' => $this->appKey,
+            'resolveKey' => $this->resolveKey,
             'projectCode' => $this->projectCode,
             'users' => array_map(
                 static fn (ImpersonableUserListItemDTO $user): array => $user->toArray(),

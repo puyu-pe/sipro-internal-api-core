@@ -17,7 +17,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testRequestFromArrayToArrayWithAllFields(): void
     {
         $payload = [
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 42,
             'reason' => 'support investigation',
@@ -34,7 +34,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testRequestFromArrayWithOptionalFieldsNull(): void
     {
         $payload = [
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 1,
         ];
@@ -51,7 +51,7 @@ final class ImpersonationDTOTest extends TestCase
     {
         $this->expectException(InternalApiError::class);
         ImpersonationRequestDTO::fromArray([
-            'appKey' => '',
+            'resolveKey' => '',
             'projectCode' => 'YUBUS',
             'targetUserId' => 1,
         ]);
@@ -61,7 +61,7 @@ final class ImpersonationDTOTest extends TestCase
     {
         $this->expectException(InternalApiError::class);
         ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => '',
             'targetUserId' => 1,
         ]);
@@ -71,7 +71,7 @@ final class ImpersonationDTOTest extends TestCase
     {
         $this->expectException(InternalApiError::class);
         ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 0,
         ]);
@@ -81,7 +81,7 @@ final class ImpersonationDTOTest extends TestCase
     {
         $this->expectException(InternalApiError::class);
         ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => -1,
         ]);
@@ -90,7 +90,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testFromArraysSucceedsWithTargetUserIdOne(): void
     {
         $dto = ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 1,
         ]);
@@ -101,7 +101,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testImpersonationRequestValidationAcceptsMissingDuration(): void
     {
         $dto = ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 1,
         ]);
@@ -112,7 +112,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testImpersonationRequestValidationRejectsDurationBelowPolicy(): void
     {
         $dto = ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 1,
             'durationMinutes' => 4,
@@ -127,7 +127,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testImpersonationRequestValidationRejectsDurationAbovePolicy(): void
     {
         $dto = ImpersonationRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'targetUserId' => 1,
             'durationMinutes' => 61,
@@ -139,7 +139,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testSearchRequestTrimsQueryAndUsesDefaultPagination(): void
     {
         $dto = ImpersonableUserSearchRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'query' => '  juan  ',
         ]);
@@ -153,7 +153,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testSearchRequestAllowsEmptyQueryButKeepsBoundedPagination(): void
     {
         $dto = ImpersonableUserSearchRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'query' => '   ',
             'page' => 2,
@@ -167,7 +167,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testSearchRequestValidationRejectsInvalidPagination(): void
     {
         $dto = ImpersonableUserSearchRequestDTO::fromArray([
-            'appKey' => 'yubus-app-001',
+            'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
             'page' => 0,
             'perPage' => 51,
@@ -182,7 +182,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testResponseToArray(): void
     {
         $dto = new ImpersonationResponseDTO(
-            appKey: 'yubus-app-001',
+            resolveKey: 'yubus-app-001',
             projectCode: 'YUBUS',
             status: 'impersonation_ready',
             accessUrl: '/support/enter/abc123',
@@ -191,7 +191,7 @@ final class ImpersonationDTOTest extends TestCase
 
         self::assertSame(
             [
-                'appKey' => 'yubus-app-001',
+                'resolveKey' => 'yubus-app-001',
                 'projectCode' => 'YUBUS',
                 'status' => 'impersonation_ready',
                 'accessUrl' => '/support/enter/abc123',
@@ -204,7 +204,7 @@ final class ImpersonationDTOTest extends TestCase
     public function testSearchResponseToArray(): void
     {
         $dto = new ImpersonableUserSearchResponseDTO(
-            appKey: 'yubus-app-001',
+            resolveKey: 'yubus-app-001',
             projectCode: 'YUBUS',
             users: [
                 new ImpersonableUserListItemDTO(42, 'jgarcia', 'Juan Garcia'),
@@ -217,7 +217,7 @@ final class ImpersonationDTOTest extends TestCase
 
         self::assertSame(
             [
-                'appKey' => 'yubus-app-001',
+                'resolveKey' => 'yubus-app-001',
                 'projectCode' => 'YUBUS',
                 'users' => [
                     [

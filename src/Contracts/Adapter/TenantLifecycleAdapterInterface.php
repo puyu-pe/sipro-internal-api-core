@@ -9,13 +9,13 @@ use PuyuPe\SiproInternalApiCore\Contracts\Dto\TenantLifecycleResponseDTO;
 
 interface TenantLifecycleAdapterInterface
 {
-    public function warnTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
+    public function warnTenant(string $resolveKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
 
-    public function suspendTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
+    public function suspendTenant(string $resolveKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
 
-    public function activateTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
+    public function activateTenant(string $resolveKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
 
-    public function closeTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
+    public function closeTenant(string $resolveKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
 
-    public function reopenTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
+    public function reopenTenant(string $resolveKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO;
 }
