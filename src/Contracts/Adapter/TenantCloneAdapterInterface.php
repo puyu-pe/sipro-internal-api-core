@@ -11,7 +11,7 @@ use PuyuPe\SiproInternalApiCore\Contracts\Dto\TenantImportResponseDTO;
 
 interface TenantCloneAdapterInterface
 {
-    public function exportTenant(string $appKey, TenantExportRequestDTO $dto): TenantExportResponseDTO;
+    public function exportTenant(string $resolveKey, TenantExportRequestDTO $dto): TenantExportResponseDTO;
 
-    public function importTenant(string $appKey, TenantImportRequestDTO $dto): TenantImportResponseDTO;
+    public function importTenant(string $resolveKey, TenantImportRequestDTO $dto): TenantImportResponseDTO;
 }

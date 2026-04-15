@@ -15,7 +15,7 @@ final class TenantCloneDTOTest extends TestCase
     public function testExportRequestFromArrayToArray(): void
     {
         $payload = [
-            'appKey' => 'acme-app-001',
+            'resolveKey' => 'acme-app-001',
             'projectCode' => 'ACME',
             'reason' => 'MIGRATION',
         ];
@@ -28,7 +28,7 @@ final class TenantCloneDTOTest extends TestCase
     public function testExportResponseToArray(): void
     {
         $dto = new TenantExportResponseDTO(
-            appKey: 'acme-app-001',
+            resolveKey: 'acme-app-001',
             projectCode: 'ACME',
             dumpPath: '/mnt/backups/acme-20260325.sql.gz',
             checksum: 'sha256:3f4b8c',
@@ -37,7 +37,7 @@ final class TenantCloneDTOTest extends TestCase
 
         self::assertSame(
             [
-                'appKey' => 'acme-app-001',
+                'resolveKey' => 'acme-app-001',
                 'projectCode' => 'ACME',
                 'dumpPath' => '/mnt/backups/acme-20260325.sql.gz',
                 'checksum' => 'sha256:3f4b8c',
@@ -50,7 +50,7 @@ final class TenantCloneDTOTest extends TestCase
     public function testImportRequestFromArrayToArray(): void
     {
         $payload = [
-            'appKey' => 'acme-app-001',
+            'resolveKey' => 'acme-app-001',
             'projectCode' => 'ACME',
             'dumpPath' => '/mnt/backups/acme-20260325.sql.gz',
             'checksum' => 'sha256:3f4b8c',
@@ -64,7 +64,7 @@ final class TenantCloneDTOTest extends TestCase
     public function testImportResponseToArray(): void
     {
         $dto = new TenantImportResponseDTO(
-            appKey: 'acme-app-001',
+            resolveKey: 'acme-app-001',
             projectCode: 'ACME',
             database: 'acme_20260325',
             restored: true
@@ -72,7 +72,7 @@ final class TenantCloneDTOTest extends TestCase
 
         self::assertSame(
             [
-                'appKey' => 'acme-app-001',
+                'resolveKey' => 'acme-app-001',
                 'projectCode' => 'ACME',
                 'database' => 'acme_20260325',
                 'restored' => true,

@@ -13,7 +13,7 @@ final class TenantLifecycleDTOTest extends TestCase
     public function testRequestFromArrayToArray(): void
     {
         $payload = [
-            'appKey' => 'acme-app-001',
+            'resolveKey' => 'acme-app-001',
             'projectCode' => 'ACME',
             'reason' => 'PAYMENT_OVERDUE',
             'requestedAt' => '2026-03-25T10:00:00Z',
@@ -28,7 +28,7 @@ final class TenantLifecycleDTOTest extends TestCase
     public function testRequestFromArrayWithRequestedBy(): void
     {
         $payload = [
-            'appKey' => 'acme-app-001',
+            'resolveKey' => 'acme-app-001',
             'projectCode' => 'ACME',
             'reason' => 'CLOSURE_REQUESTED',
             'requestedAt' => '2026-04-10T12:00:00Z',
@@ -44,7 +44,7 @@ final class TenantLifecycleDTOTest extends TestCase
     public function testRequestFromArrayWithoutRequestedBy(): void
     {
         $payload = [
-            'appKey' => 'acme-app-001',
+            'resolveKey' => 'acme-app-001',
             'projectCode' => 'ACME',
             'reason' => null,
             'requestedAt' => null,
@@ -62,7 +62,7 @@ final class TenantLifecycleDTOTest extends TestCase
     public function testResponseToArray(): void
     {
         $dto = new TenantLifecycleResponseDTO(
-            appKey: 'acme-app-001',
+            resolveKey: 'acme-app-001',
             projectCode: 'ACME',
             status: 'ok',
             systemStatus: 'suspended'
@@ -70,7 +70,7 @@ final class TenantLifecycleDTOTest extends TestCase
 
         self::assertSame(
             [
-                'appKey' => 'acme-app-001',
+                'resolveKey' => 'acme-app-001',
                 'projectCode' => 'ACME',
                 'status' => 'ok',
                 'systemStatus' => 'suspended',

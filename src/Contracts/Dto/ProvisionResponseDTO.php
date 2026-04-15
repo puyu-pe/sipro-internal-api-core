@@ -10,7 +10,7 @@ final class ProvisionResponseDTO
      * @param array<string> $warnings
      */
     public function __construct(
-        public readonly string $appKey,
+        public readonly string $resolveKey,
         public readonly string $projectCode,
         public readonly string $database,
         public readonly string $status,
@@ -39,7 +39,7 @@ final class ProvisionResponseDTO
         }
 
         return new self(
-            appKey: (string) ($payload['app_key'] ?? ''),
+            resolveKey: (string) ($payload['resolve_key'] ?? ''),
             projectCode: (string) ($payload['project_code'] ?? ''),
             database: (string) ($payload['database'] ?? ''),
             status: (string) ($payload['status'] ?? ''),
@@ -60,7 +60,7 @@ final class ProvisionResponseDTO
     public function toArray(): array
     {
         return [
-            'app_key' => $this->appKey,
+            'resolve_key' => $this->resolveKey,
             'project_code' => $this->projectCode,
             'database' => $this->database,
             'status' => $this->status,

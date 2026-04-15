@@ -1,6 +1,6 @@
 {
   "name": "puyu-pe/sipro-internal-api-core",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Framework-agnostic core contracts, HMAC security utilities, and API response/error standards for SIPRO internal API.",
   "type": "library",
   "license": "MIT",

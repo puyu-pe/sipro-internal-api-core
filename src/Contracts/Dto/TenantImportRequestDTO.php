@@ -7,7 +7,7 @@ namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 final class TenantImportRequestDTO
 {
     public function __construct(
-        public readonly string $appKey,
+        public readonly string $resolveKey,
         public readonly string $projectCode,
         public readonly string $dumpPath,
         public readonly string $checksum
@@ -20,7 +20,7 @@ final class TenantImportRequestDTO
     public static function fromArray(array $payload): self
     {
         return new self(
-            appKey: (string) ($payload['appKey'] ?? ''),
+            resolveKey: (string) ($payload['resolveKey'] ?? ''),
             projectCode: (string) ($payload['projectCode'] ?? ''),
             dumpPath: (string) ($payload['dumpPath'] ?? ''),
             checksum: (string) ($payload['checksum'] ?? '')
@@ -33,7 +33,7 @@ final class TenantImportRequestDTO
     public function toArray(): array
     {
         return [
-            'appKey' => $this->appKey,
+            'resolveKey' => $this->resolveKey,
             'projectCode' => $this->projectCode,
             'dumpPath' => $this->dumpPath,
             'checksum' => $this->checksum,

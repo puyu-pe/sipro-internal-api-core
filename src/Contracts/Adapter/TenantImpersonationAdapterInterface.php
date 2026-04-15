@@ -11,7 +11,7 @@ use PuyuPe\SiproInternalApiCore\Contracts\Dto\ImpersonationResponseDTO;
 
 interface TenantImpersonationAdapterInterface
 {
-    public function searchImpersonableUsers(string $appKey, ImpersonableUserSearchRequestDTO $dto): ImpersonableUserSearchResponseDTO;
+    public function searchImpersonableUsers(string $resolveKey, ImpersonableUserSearchRequestDTO $dto): ImpersonableUserSearchResponseDTO;
 
-    public function impersonateUser(string $appKey, ImpersonationRequestDTO $dto): ImpersonationResponseDTO;
+    public function impersonateUser(string $resolveKey, ImpersonationRequestDTO $dto): ImpersonationResponseDTO;
 }

@@ -11,7 +11,7 @@ use PuyuPe\SiproInternalApiCore\Errors\InternalApiError;
 final class ImpersonationRequestDTO
 {
     public function __construct(
-        public readonly string $appKey,
+        public readonly string $resolveKey,
         public readonly string $projectCode,
         public readonly int $targetUserId,
         public readonly ?string $reason = null,
@@ -26,7 +26,7 @@ final class ImpersonationRequestDTO
      */
     public static function fromArray(array $payload): self
     {
-        $appKey = (string) ($payload['appKey'] ?? '');
+        $resolveKey = (string) ($payload['resolveKey'] ?? '');
         $projectCode = (string) ($payload['projectCode'] ?? '');
         $targetUserId = isset($payload['targetUserId']) ? (int) $payload['targetUserId'] : 0;
         $reason = isset($payload['reason']) ? (string) $payload['reason'] : null;
@@ -34,11 +34,11 @@ final class ImpersonationRequestDTO
         $requestedAt = isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null;
         $durationMinutes = isset($payload['durationMinutes']) ? (int) $payload['durationMinutes'] : null;
 
-        if ($appKey === '') {
+        if ($resolveKey === '') {
             throw new InternalApiError(
                 ErrorCode::VALIDATION_ERROR,
                 'Invalid request payload.',
-                ['errors' => [['field' => 'appKey', 'code' => 'required', 'message' => 'appKey is required.']]]
+                ['errors' => [['field' => 'resolveKey', 'code' => 'required', 'message' => 'resolveKey is required.']]]
             );
         }
 
@@ -59,7 +59,7 @@ final class ImpersonationRequestDTO
         }
 
         return new self(
-            appKey: $appKey,
+            resolveKey: $resolveKey,
             projectCode: $projectCode,
             targetUserId: $targetUserId,
             reason: $reason,
@@ -114,7 +114,7 @@ final class ImpersonationRequestDTO
     public function toArray(): array
     {
         return [
-            'appKey' => $this->appKey,
+            'resolveKey' => $this->resolveKey,
             'projectCode' => $this->projectCode,
             'targetUserId' => $this->targetUserId,
             'reason' => $this->reason,

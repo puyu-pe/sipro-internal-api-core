@@ -12,7 +12,7 @@ final class ProvisionResponseDTOTest extends TestCase
     public function testFromArrayNormalizesWarnings(): void
     {
         $payload = [
-            'app_key' => 'acme-app-001',
+            'resolve_key' => 'acme-app-001',
             'project_code' => 'ACME',
             'database' => 'acme_20260325',
             'status' => 'ok',

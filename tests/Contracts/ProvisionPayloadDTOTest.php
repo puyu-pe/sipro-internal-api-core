@@ -27,7 +27,7 @@ final class ProvisionPayloadDTOTest extends TestCase
                     'app' => 'https://acme.sipro.app',
                     'api' => 'https://api.acme.sipro.app',
                 ],
-                'appKey' => 'acme-app-001',
+                'resolveKey' => 'acme-app-001',
                 'logo' => null,
                 'address' => 'Av. Demo 123',
                 'phone' => '+51 1 5555555',

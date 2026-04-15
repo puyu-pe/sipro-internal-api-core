@@ -7,7 +7,7 @@ namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 final class TenantLifecycleResponseDTO
 {
     public function __construct(
-        public readonly string $appKey,
+        public readonly string $resolveKey,
         public readonly string $projectCode,
         public readonly string $status,
         public readonly string $systemStatus
@@ -20,7 +20,7 @@ final class TenantLifecycleResponseDTO
     public function toArray(): array
     {
         return [
-            'appKey' => $this->appKey,
+            'resolveKey' => $this->resolveKey,
             'projectCode' => $this->projectCode,
             'status' => $this->status,
             'systemStatus' => $this->systemStatus,

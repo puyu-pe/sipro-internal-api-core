@@ -32,21 +32,21 @@ final class ErrorFactory
         return new InternalApiError(ErrorCode::NONCE_REPLAY, 'Replay request detected.');
     }
 
-    public static function tenantNotFound(string $appKey): InternalApiError
+    public static function tenantNotFound(string $resolveKey): InternalApiError
     {
         return new InternalApiError(
             code: ErrorCode::TENANT_NOT_FOUND,
             message: 'Tenant not found.',
-            details: ['app_key' => $appKey]
+            details: ['resolve_key' => $resolveKey]
         );
     }
 
-    public static function tenantAlreadyExists(string $appKey): InternalApiError
+    public static function tenantAlreadyExists(string $resolveKey): InternalApiError
     {
         return new InternalApiError(
             code: ErrorCode::TENANT_ALREADY_EXISTS,
             message: 'Tenant already exists.',
-            details: ['app_key' => $appKey]
+            details: ['resolve_key' => $resolveKey]
         );
     }
 
@@ -86,12 +86,12 @@ final class ErrorFactory
         );
     }
 
-    public static function userNotFound(int $userId, string $appKey): InternalApiError
+    public static function userNotFound(int $userId, string $resolveKey): InternalApiError
     {
         return new InternalApiError(
             code: ErrorCode::USER_NOT_FOUND,
             message: 'Target user not found.',
-            details: ['target_user_id' => $userId, 'app_key' => $appKey]
+            details: ['target_user_id' => $userId, 'resolve_key' => $resolveKey]
         );
     }
 

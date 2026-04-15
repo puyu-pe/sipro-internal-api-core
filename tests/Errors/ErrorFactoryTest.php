@@ -54,7 +54,7 @@ final class ErrorFactoryTest extends TestCase
         self::assertSame(ErrorCode::USER_NOT_FOUND, $error->code);
         self::assertSame('Target user not found.', $error->message);
         self::assertSame(42, $error->details['target_user_id']);
-        self::assertSame('yubus-app-001', $error->details['app_key']);
+        self::assertSame('yubus-app-001', $error->details['resolve_key']);
     }
 
     public function testImpersonationFailedReturnsCorrectCodeAndSafeDetails(): void
