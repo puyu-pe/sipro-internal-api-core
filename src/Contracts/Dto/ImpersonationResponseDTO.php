@@ -11,6 +11,7 @@ final class ImpersonationResponseDTO
         public readonly string $projectCode,
         public readonly string $status,
         public readonly string $accessUrl,
+        public readonly ?int $effectiveDurationMinutes = null,
     ) {}
 
     /**
@@ -23,6 +24,7 @@ final class ImpersonationResponseDTO
             'projectCode' => $this->projectCode,
             'status' => $this->status,
             'accessUrl' => $this->accessUrl,
+            'effectiveDurationMinutes' => $this->effectiveDurationMinutes,
         ];
     }
 }
