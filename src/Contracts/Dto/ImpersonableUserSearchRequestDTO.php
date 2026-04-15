@@ -8,16 +8,20 @@ use PuyuPe\SiproInternalApiCore\Contracts\Validation\ValidationResult;
 use PuyuPe\SiproInternalApiCore\Errors\ErrorCode;
 use PuyuPe\SiproInternalApiCore\Errors\InternalApiError;
 
-final class ImpersonationRequestDTO
+final class ImpersonableUserSearchRequestDTO
 {
+    public const DEFAULT_PER_PAGE = 20;
+
+    public const MAX_PER_PAGE = 50;
+
     public function __construct(
         public readonly string $appKey,
         public readonly string $projectCode,
-        public readonly int $targetUserId,
-        public readonly ?string $reason = null,
+        public readonly ?string $query = null,
+        public readonly int $page = 1,
+        public readonly int $perPage = self::DEFAULT_PER_PAGE,
         public readonly ?string $requestedBy = null,
         public readonly ?string $requestedAt = null,
-        public readonly ?int $durationMinutes = null,
     ) {
     }
 
@@ -28,11 +32,11 @@ final class ImpersonationRequestDTO
     {
         $appKey = (string) ($payload['appKey'] ?? '');
         $projectCode = (string) ($payload['projectCode'] ?? '');
-        $targetUserId = isset($payload['targetUserId']) ? (int) $payload['targetUserId'] : 0;
-        $reason = isset($payload['reason']) ? (string) $payload['reason'] : null;
+        $query = isset($payload['query']) ? trim((string) $payload['query']) : null;
+        $page = isset($payload['page']) ? (int) $payload['page'] : 1;
+        $perPage = isset($payload['perPage']) ? (int) $payload['perPage'] : self::DEFAULT_PER_PAGE;
         $requestedBy = isset($payload['requestedBy']) ? (string) $payload['requestedBy'] : null;
         $requestedAt = isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null;
-        $durationMinutes = isset($payload['durationMinutes']) ? (int) $payload['durationMinutes'] : null;
 
         if ($appKey === '') {
             throw new InternalApiError(
@@ -50,54 +54,42 @@ final class ImpersonationRequestDTO
             );
         }
 
-        if ($targetUserId <= 0) {
-            throw new InternalApiError(
-                ErrorCode::VALIDATION_ERROR,
-                'Invalid request payload.',
-                ['errors' => [['field' => 'targetUserId', 'code' => 'required', 'message' => 'targetUserId must be a positive integer.']]]
-            );
-        }
-
         return new self(
             appKey: $appKey,
             projectCode: $projectCode,
-            targetUserId: $targetUserId,
-            reason: $reason,
+            query: $query === '' ? null : $query,
+            page: $page,
+            perPage: $perPage,
             requestedBy: $requestedBy,
             requestedAt: $requestedAt,
-            durationMinutes: $durationMinutes,
         );
     }
 
-    public function validateDurationPolicy(int $minDurationMinutes, int $maxDurationMinutes): ValidationResult
+    public function validate(): ValidationResult
     {
-        if ($this->durationMinutes === null) {
-            return ValidationResult::success();
-        }
-
         $errors = [];
 
-        if ($this->durationMinutes < $minDurationMinutes) {
+        if ($this->page < 1) {
             $errors[] = [
-                'field' => 'durationMinutes',
+                'field' => 'page',
                 'code' => 'min',
-                'message' => sprintf('durationMinutes must be at least %d.', $minDurationMinutes),
+                'message' => 'page must be at least 1.',
             ];
         }
 
-        if ($this->durationMinutes > $maxDurationMinutes) {
+        if ($this->perPage < 1) {
             $errors[] = [
-                'field' => 'durationMinutes',
+                'field' => 'perPage',
+                'code' => 'min',
+                'message' => 'perPage must be at least 1.',
+            ];
+        }
+
+        if ($this->perPage > self::MAX_PER_PAGE) {
+            $errors[] = [
+                'field' => 'perPage',
                 'code' => 'max',
-                'message' => sprintf('durationMinutes must not exceed %d.', $maxDurationMinutes),
-            ];
-        }
-
-        if ($this->durationMinutes <= 0) {
-            $errors[] = [
-                'field' => 'durationMinutes',
-                'code' => 'positive',
-                'message' => 'durationMinutes must be a positive integer.',
+                'message' => sprintf('perPage must not exceed %d.', self::MAX_PER_PAGE),
             ];
         }
 
@@ -116,11 +108,11 @@ final class ImpersonationRequestDTO
         return [
             'appKey' => $this->appKey,
             'projectCode' => $this->projectCode,
-            'targetUserId' => $this->targetUserId,
-            'reason' => $this->reason,
+            'query' => $this->query,
+            'page' => $this->page,
+            'perPage' => $this->perPage,
             'requestedBy' => $this->requestedBy,
             'requestedAt' => $this->requestedAt,
-            'durationMinutes' => $this->durationMinutes,
         ];
     }
 }
