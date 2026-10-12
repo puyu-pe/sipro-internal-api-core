@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 
+use PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation;
+
 final class ProvisionPayloadDTO
 {
     /**
@@ -23,6 +25,13 @@ final class ProvisionPayloadDTO
      */
     public static function fromArray(array $payload): self
     {
+        foreach (['project', 'client', 'services'] as $field) {
+            if (!isset($payload[$field]) || !is_array($payload[$field])) {
+                RequestValidation::fail($field, 'required', "$field is required.");
+            }
+        }
+        RequestValidation::fields($payload, ['metadata' => '?array']);
+        RequestValidation::objectList($payload, 'services');
         $servicesPayload = is_array($payload['services'] ?? null) ? $payload['services'] : [];
         $services = [];
         foreach ($servicesPayload as $service) {

@@ -21,6 +21,10 @@ final class ProvisionUserCredentialDTO
      */
     public static function fromArray(array $payload): self
     {
+        \PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation::fields($payload, [
+            'name' => '?string', 'username' => 'string', 'email' => '?string', 'role' => 'string',
+            'initialPassword' => 'string', 'mustChangePassword' => 'bool',
+        ], 'credentials.');
         return new self(
             name: isset($payload['name']) ? (string) $payload['name'] : null,
             username: (string) ($payload['username'] ?? ''),

@@ -20,6 +20,9 @@ final class HmacVerifier
         private readonly int $allowedClockSkewSeconds = 300,
         ?callable $currentTimeProvider = null
     ) {
+        if ($allowedClockSkewSeconds < 0 || $allowedClockSkewSeconds > 86400) {
+            throw new \InvalidArgumentException('Clock skew must be between 0 and 86400 seconds.');
+        }
         $this->currentTimeProvider = $currentTimeProvider ?? static fn (): int => time();
     }
 
@@ -35,6 +38,7 @@ final class HmacVerifier
         callable $resolveSecretByKeyId,
         ?NonceStoreInterface $nonceStore = null
     ): VerificationResult {
+        CanonicalRequest::assertPath($path);
         $normalizedHeaders = $this->normalizeHeaders($headers);
 
         $keyId = $this->headerValue($normalizedHeaders, InternalHeaders::KEY_ID);
@@ -58,19 +62,6 @@ final class HmacVerifier
             );
         }
 
-        if ($nonceStore !== null) {
-            $nonceKey = $keyId . ':' . $nonce;
-            if ($nonceStore->has($nonceKey)) {
-                return VerificationResult::failure(
-                    ErrorCode::NONCE_REPLAY,
-                    'Replay request detected.',
-                    ['nonce' => $nonce]
-                );
-            }
-
-            $nonceStore->put($nonceKey, $this->allowedClockSkewSeconds);
-        }
-
         $secret = $resolveSecretByKeyId($keyId);
         if (!is_string($secret) || $secret === '') {
             return VerificationResult::failure(
@@ -81,12 +72,15 @@ final class HmacVerifier
 
         $canonical = CanonicalRequest::build($method, $path, $timestamp, $nonce, $rawBody);
 
-        $expectedHex = $this->signer->sign($canonical, $secret, 'sha256', 'hex');
-        $expectedBase64 = $this->signer->sign($canonical, $secret, 'sha256', 'base64');
-
-        $valid = hash_equals($expectedHex, $providedSignature) || hash_equals($expectedBase64, $providedSignature);
+        $expectedHex = $this->signer->sign($canonical, $secret);
+        $valid = hash_equals($expectedHex, $providedSignature);
         if (!$valid) {
             return VerificationResult::failure(ErrorCode::INVALID_SIGNATURE, 'Invalid request signature.');
+        }
+
+        $nonceKey = hash('sha256', json_encode([$keyId, $nonce], JSON_THROW_ON_ERROR));
+        if ($nonceStore !== null && !$nonceStore->consume($nonceKey, 2 * $this->allowedClockSkewSeconds + 1)) {
+            return VerificationResult::failure(ErrorCode::NONCE_REPLAY, 'Replay request detected.');
         }
 
         return VerificationResult::success();
@@ -104,7 +98,10 @@ final class HmacVerifier
                 continue;
             }
 
-            $normalized[strtolower(trim($name))] = trim((string) $value);
+            if (is_array($value)) {
+                $value = count($value) === 1 ? reset($value) : null;
+            }
+            $normalized[strtolower(trim($name))] = is_string($value) ? trim($value) : '';
         }
 
         return $normalized;

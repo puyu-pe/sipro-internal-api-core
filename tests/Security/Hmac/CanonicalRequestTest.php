@@ -28,7 +28,7 @@ final class CanonicalRequestTest extends TestCase
             . self::NONCE . "\n"
             . hash('sha256', self::RAW_BODY);
 
-        $actual = CanonicalRequest::build(self::METHOD, self::PATH . '?ignored=true', self::TIMESTAMP, self::NONCE, self::RAW_BODY);
+        $actual = CanonicalRequest::build(self::METHOD, self::PATH, self::TIMESTAMP, self::NONCE, self::RAW_BODY);
 
         self::assertSame($expected, $actual);
     }

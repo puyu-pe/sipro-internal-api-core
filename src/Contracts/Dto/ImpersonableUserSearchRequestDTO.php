@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 
 use PuyuPe\SiproInternalApiCore\Contracts\Validation\ValidationResult;
-use PuyuPe\SiproInternalApiCore\Errors\ErrorCode;
-use PuyuPe\SiproInternalApiCore\Errors\InternalApiError;
+use PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation;
 
 final class ImpersonableUserSearchRequestDTO
 {
@@ -30,6 +29,10 @@ final class ImpersonableUserSearchRequestDTO
      */
     public static function fromArray(array $payload): self
     {
+        RequestValidation::tenant($payload);
+        RequestValidation::integer($payload, 'page');
+        RequestValidation::integer($payload, 'perPage');
+        RequestValidation::optionalString($payload, 'query');
         $resolveKey = (string) ($payload['resolveKey'] ?? '');
         $projectCode = (string) ($payload['projectCode'] ?? '');
         $query = isset($payload['query']) ? trim((string) $payload['query']) : null;
@@ -37,22 +40,6 @@ final class ImpersonableUserSearchRequestDTO
         $perPage = isset($payload['perPage']) ? (int) $payload['perPage'] : self::DEFAULT_PER_PAGE;
         $requestedBy = isset($payload['requestedBy']) ? (string) $payload['requestedBy'] : null;
         $requestedAt = isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null;
-
-        if ($resolveKey === '') {
-            throw new InternalApiError(
-                ErrorCode::VALIDATION_ERROR,
-                'Invalid request payload.',
-                ['errors' => [['field' => 'resolveKey', 'code' => 'required', 'message' => 'resolveKey is required.']]]
-            );
-        }
-
-        if ($projectCode === '') {
-            throw new InternalApiError(
-                ErrorCode::VALIDATION_ERROR,
-                'Invalid request payload.',
-                ['errors' => [['field' => 'projectCode', 'code' => 'required', 'message' => 'projectCode is required.']]]
-            );
-        }
 
         return new self(
             resolveKey: $resolveKey,

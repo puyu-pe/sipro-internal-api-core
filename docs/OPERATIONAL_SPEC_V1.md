@@ -1,5 +1,9 @@
 # SIPRO Internal API - Anexo Operativo v1 (Fuente de verdad)
 
+> Documento histórico de los paquetes 1.x. Para las librerías 2.0 utilice
+> [OPERATIONAL_SPEC_V2.md](OPERATIONAL_SPEC_V2.md), que reemplaza las reglas de
+> normalización, nonce, codificación y validación descritas aquí.
+
 Documento normativo de operación para integraciones SIPRO ↔ SaaS en `/internal/v1`.
 
 ---
@@ -187,4 +191,3 @@ Objetivo: permitir provisión ~1 min sin falsos timeouts.
 - Nonce insertado en DB master con unique.
 - Firma comparada en tiempo constante.
 - Secrets no expuestos en logs/errores.
-

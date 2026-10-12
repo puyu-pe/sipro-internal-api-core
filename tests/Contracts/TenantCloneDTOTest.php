@@ -53,7 +53,7 @@ final class TenantCloneDTOTest extends TestCase
             'resolveKey' => 'acme-app-001',
             'projectCode' => 'ACME',
             'dumpPath' => '/mnt/backups/acme-20260325.sql.gz',
-            'checksum' => 'sha256:3f4b8c',
+            'checksum' => str_repeat('a', 64),
         ];
 
         $dto = TenantImportRequestDTO::fromArray($payload);

@@ -1,322 +1,120 @@
-# puyupe/sipro-internal-api-core
+# Sipro Internal API Core 2.0
 
-Paquete Composer framework-agnostic para integraciones entre **SIPRO Control Plane** y los **SaaS** en `/internal/v1`.
+Contratos PHP >=8.1 y política compartida para las integraciones Sipro en
+`/internal/v1`. La versión **2.0.0** elimina la compatibilidad con la identidad
+legacy. Laravel y CI3 delegan en `Http\InternalApi` la validación, el despacho,
+HMAC y la traducción de errores.
 
-## ¿Qué resuelve este paquete?
+## Contrato de identidad
 
-1. **Contracts (DTOs)** para provisioning, ciclo de vida y clonado de tenants.
-2. **HMAC** para firmado y verificación de requests entre servicios.
-3. **Errores estándar** para respuestas JSON consistentes (`ErrorResponse`).
+| Superficie | Nombre canónico |
+|---|---|
+| Propiedades PHP y argumentos nombrados | `resolveKey` |
+| Solicitud de provisioning | `project.resolveKey` |
+| Otras solicitudes de tenant | `resolveKey` |
+| Respuesta de provisioning | `resolve_key` (esquema snake_case) |
+| Otras respuestas de tenant | `resolveKey` |
 
-> Objetivo: reducir código repetido y evitar diferencias de implementación entre servicios.
+Se rechazan campos de identidad `appKey`, `app_key` y el uso de `resolve_key` en
+solicitudes que requieren `resolveKey`, incluso si también incluyen el campo
+correcto. La identidad de la ruta y la del cuerpo deben coincidir.
+Los adaptadores verifican la pertenencia del proyecto y de la base de datos.
 
-## Payload de ejemplo: ProvisionPayloadDTO (createTenant)
+## Operaciones
 
-```json
-{
-  "project": {
-    "name": "Acme Suite",
-    "code": "ACME",
-    "description": "Suite principal",
-    "billingCycle": "monthly",
-    "priceAgreed": 199.9,
-    "startDate": "2026-03-25",
-    "renewalDate": "2027-03-25",
-    "execStatus": "active",
-    "isActive": true,
-    "accessUrlCustom": "https://acme.sipro.app",
-    "accessUrls": {
-      "app": "https://acme.sipro.app",
-      "api": "https://api.acme.sipro.app"
-    },
-    "appKey": "acme-app-001",
-    "logo": null,
-    "address": "Av. Demo 123",
-    "phone": "+51 1 5555555",
-    "email": "admin@acme.pe",
-    "ubigeo": "150101",
-    "latitud": -12.0464,
-    "longitud": -77.0428,
-    "color": "#004c97",
-    "notes": "Cliente migrado desde legacy"
-  },
-  "client": {
-    "ruc": "20123456789",
-    "businessName": "Acme SAC",
-    "tradeName": "Acme"
-  },
-  "services": [
-    {
-      "key": "billing",
-      "externalId": "srv-01",
-      "code": "BILL",
-      "name": "Facturacion",
-      "description": "Modulo de facturacion",
-      "priceList": 99.0,
-      "defaultBillingCycle": "monthly",
-      "type": "core",
-      "accessUrl": "https://acme.sipro.app/billing",
-      "logo": null,
-      "credentials": [
-        {
-          "name": "Admin Acme",
-          "username": "admin",
-          "email": "admin@acme.pe",
-          "role": "owner",
-          "initialPassword": "Temporal123!",
-          "mustChangePassword": true
-        }
-      ],
-      "modules": [
-        {
-          "id": 10,
-          "externalId": "mod-01",
-          "name": "Ventas",
-          "description": "Ventas y cotizaciones",
-          "price": 20.0,
-          "isUnlimited": false,
-          "customPrice": null,
-          "quantity": 5
-        }
-      ]
-    }
-  ],
-  "metadata": {
-    "source": "control-plane",
-    "priority": "high"
-  }
-}
-```
+Todas utilizan POST y responden con HTTP 200 y `{ "ok": true, ...camposDTO }`:
 
-## Ciclo de vida del tenant (warn / suspend / activate / close / reopen)
+- `/internal/v1/tenants`: provisioning.
+- `/internal/v1/tenants/{resolveKey}:warn`, `:suspend`, `:activate`, `:close`, `:reopen`.
+- `/internal/v1/tenants/{resolveKey}:export`, `:import`.
+- `/internal/v1/tenants/{resolveKey}:impersonation-users/search`.
+- `/internal/v1/tenants/{resolveKey}:impersonate`.
 
-`TenantLifecycleRequestDTO` (payload estándar para todas las acciones de ciclo de vida):
-
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `appKey` | `string` | Identificador del tenant |
-| `projectCode` | `string` | Código del proyecto |
-| `reason` | `?string` | Motivo de la acción (opcional) |
-| `requestedAt` | `?string` | ISO 8601 — cuándo se solicitó (opcional) |
-| `requestedBy` | `?string` | Identificador del operador que solicita la acción (opcional) |
+Cada capacidad tiene su interfaz en `Contracts\Adapter`. `TenantAdapterInterface`
+agrupa provisioning y lifecycle; clone e impersonation tienen interfaces propias.
 
 ```json
-{
-  "appKey": "acme-app-001",
-  "projectCode": "ACME",
-  "reason": "PAYMENT_OVERDUE",
-  "requestedAt": "2026-03-25T10:00:00Z",
-  "requestedBy": "user-42"
-}
+{"resolveKey":"tenant-001","projectCode":"PROJ","reason":"MAINTENANCE"}
 ```
 
-`TenantLifecycleResponseDTO`:
+Los DTOs de provisioning mantienen `project`, `client`, `services`, módulos y
+credenciales anidados. Los campos suministrados se validan antes de convertirlos;
+un valor de tipo incorrecto no se transforma silenciosamente. La búsqueda tiene
+`page=1`, `perPage=20`, máximo 50. La impersonación aplica duración predeterminada
+5 minutos y límites 5–60, configurables por el bridge.
 
-```json
-{
-  "appKey": "acme-app-001",
-  "projectCode": "ACME",
-  "status": "ok",
-  "systemStatus": "suspended"
-}
-```
+## Errores
 
-## Clonado de tenant (export / import)
-
-`TenantExportRequestDTO`:
-
-```json
-{
-  "appKey": "acme-app-001",
-  "projectCode": "ACME",
-  "reason": "MIGRATION"
-}
-```
-
-`TenantExportResponseDTO`:
-
-```json
-{
-  "appKey": "acme-app-001",
-  "projectCode": "ACME",
-  "dumpPath": "/mnt/backups/acme-20260325.sql.gz",
-  "checksum": "sha256:3f4b8c...",
-  "createdAt": "2026-03-25T10:35:00Z"
-}
-```
-
-`TenantImportRequestDTO`:
-
-```json
-{
-  "appKey": "acme-app-001",
-  "projectCode": "ACME",
-  "dumpPath": "/mnt/backups/acme-20260325.sql.gz",
-  "checksum": "sha256:3f4b8c..."
-}
-```
-
-`TenantImportResponseDTO`:
-
-```json
-{
-  "appKey": "acme-app-001",
-  "projectCode": "ACME",
-  "database": "acme_20260325",
-  "restored": true
-}
-```
-
-## Interfaces de adapters
-
-Provisioning:
-- `TenantProvisioningAdapterInterface::createTenant(ProvisionPayloadDTO $dto): ProvisionResponseDTO`
-
-Ciclo de vida:
-- `TenantLifecycleAdapterInterface::warnTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
-- `TenantLifecycleAdapterInterface::suspendTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
-- `TenantLifecycleAdapterInterface::activateTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
-- `TenantLifecycleAdapterInterface::closeTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
-- `TenantLifecycleAdapterInterface::reopenTenant(string $appKey, TenantLifecycleRequestDTO $dto): TenantLifecycleResponseDTO`
-
-Clonado:
-- `TenantCloneAdapterInterface::exportTenant(string $appKey, TenantExportRequestDTO $dto): TenantExportResponseDTO`
-- `TenantCloneAdapterInterface::importTenant(string $appKey, TenantImportRequestDTO $dto): TenantImportResponseDTO`
-
-Nota: `TenantAdapterInterface` agrupa provisioning + ciclo de vida. El clonado se mantiene separado en `TenantCloneAdapterInterface`.
-
-## Firma HMAC (Control Plane) — pasos
-
-Headers requeridos:
-- `X-Internal-KeyId`
-- `X-Internal-Timestamp`
-- `X-Internal-Nonce`
-- `X-Internal-Signature`
-
-Canonical string **v1 exacto**:
-
-```text
-{METHOD}\n{PATH}\n{TIMESTAMP}\n{NONCE}\n{BODY_SHA256_HEX}
-```
+`InternalApiError` es un valor. Para interrumpir una operación se utiliza la
+excepción compartida:
 
 ```php
-<?php
+use PuyuPe\SiproInternalApiCore\Errors\ErrorFactory;
+use PuyuPe\SiproInternalApiCore\Errors\InternalApiException;
 
-use PuyuPe\SiproInternalApiCore\Security\Hmac\CanonicalRequest;
+throw new InternalApiException(ErrorFactory::tenantNotFound($resolveKey));
+```
+
+`Http\Response\ApiResponse` define los estados HTTP. Todos los errores tienen
+la forma `{ "ok": false, "error": { "code": "...", "message": "...", "details": {} } }`.
+`details` se omite cuando está vacío. Una excepción inesperada devuelve
+`500 INTERNAL_ERROR` sin serializar su mensaje interno.
+
+## Firma y replay
+
+```php
 use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacSigner;
 
-$method = 'POST';
-$path = '/internal/v1/tenants';
-$rawBody = json_encode(['tenant_uuid' => '6fd22e43-c8a7-4f02-9f8f-31157a4f1b74'], JSON_THROW_ON_ERROR);
-$timestamp = (string) time();
-$nonce = bin2hex(random_bytes(16));
-$keyId = 'cp-key-01';
-$secret = 'super-shared-secret';
-
-// 1) BODY_SHA256_HEX
-$bodyHash = CanonicalRequest::bodySha256Hex($rawBody);
-
-// 2) Canonical string
-$canonical = CanonicalRequest::build($method, $path, $timestamp, $nonce, $rawBody);
-
-// 3) Firma con secret (hex por defecto)
-$signer = new HmacSigner();
-$signature = $signer->sign($canonical, $secret, 'sha256', 'hex');
-
-// 4) Armar headers
-$headers = [
-  'X-Internal-KeyId' => $keyId,
-  'X-Internal-Timestamp' => $timestamp,
-  'X-Internal-Nonce' => $nonce,
-  'X-Internal-Signature' => $signature,
-];
-```
-
-## Verificación HMAC en SaaS con `HmacVerifier`
-
-```php
-<?php
-
-use PuyuPe\SiproInternalApiCore\Security\Hmac\HmacVerifier;
-use PuyuPe\SiproInternalApiCore\Security\Hmac\NonceStoreInterface;
-
-final class RedisNonceStore implements NonceStoreInterface {
-    public function has(string $nonce): bool {
-        // GET nonce
-        return false;
-    }
-
-    public function put(string $nonce, int $ttlSeconds): void {
-        // SETEX nonce ttlSeconds 1
-    }
-}
-
-$verifier = new HmacVerifier(allowedClockSkewSeconds: 300);
-
-$result = $verifier->verify(
+$headers = (new HmacSigner())->buildSignedHeaders(
     method: 'POST',
-    path: '/internal/v1/tenants',
+    path: '/internal/v1/tenants/tenant-001:warn',
     rawBody: $rawBody,
-    headers: $headers,
-    // resolveSecretByKeyId: lookup seguro por KeyId
-    resolveSecretByKeyId: function (string $keyId): ?string {
-        return $keyId === 'cp-key-01' ? 'super-shared-secret' : null;
-    },
-    nonceStore: new RedisNonceStore(), // opcional, recomendado en producción
+    keyId: 'sipro-current',
+    secret: $_ENV['SIPRO_INTERNAL_SECRET'],
 );
-
-if (! $result->ok) {
-    // errorCode: VALIDATION_ERROR | REQUEST_EXPIRED | NONCE_REPLAY | INVALID_SIGNATURE
-}
 ```
 
-Notas prácticas:
-- `HmacVerifier` valida timestamp dentro de ±300s (configurable).
-- `NonceStoreInterface` evita replay. Implementación típica:
-  - **Redis** (`SETEX` por nonce), o
-  - **tabla en DB master** con TTL/fecha de expiración.
-- Si no envías `nonceStore`, se verifica firma/timestamp pero sin protección anti-replay.
+La firma es HMAC-SHA256 hexadecimal minúscula sobre el cuerpo exacto. No se
+aceptan query strings, slash final ni otra codificación de firma. El nonce es
+obligatorio incluso cuando se deshabilita su persistencia.
 
-## Ejemplos de `ErrorResponse`
+`Security\Hmac\NonceStoreInterface::consume(string $nonceKey, int $ttlSeconds): bool`
+debe reservar atómicamente el nonce: `true` para la primera reserva, `false` para
+una reserva vigente, excepción para fallos de almacenamiento. La reserva ocurre
+después de comprobar la firma. Consulte [la especificación 2.0](docs/OPERATIONAL_SPEC_V2.md).
 
-### 1) `VALIDATION_ERROR` con errores por campo
+## Migración desde 1.x
 
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed.",
-    "details": {
-      "errors": [
-        {"field": "tenant_uuid", "code": "invalid_uuid_v4", "message": "tenant_uuid must be a valid UUID v4."},
-        {"field": "admin_user.email", "code": "invalid_email", "message": "admin_user.email must be a valid email address."}
-      ]
-    }
-  }
-}
+Actualice payloads, argumentos nombrados y overrides a los nombres canónicos.
+Reemplace la excepción específica de Laravel por `InternalApiException`, implemente
+`consume` en los nonce stores y utilice las firmas simplificadas de `HmacSigner`.
+Los helpers solo necesitan `databasePrefix()` cuando se utiliza la generación
+predeterminada de nombres de DB. También se puede sobrescribir `buildDatabaseName()`;
+los adaptadores que usan otros helpers no necesitan definir un prefijo.
+La transición no rota credenciales ni modifica Laravel `APP_KEY` o `setting.api_key`.
+
+## Pruebas
+
+Ejecute `composer install` y `composer test`. Los bridges consumen los mismos
+casos de `resources/contracts/v2/`, con respuestas completas y controles de
+invocación del adaptador. El workspace coordinador incluye entornos Docker para
+las versiones mínimas de PHP y las pruebas de integración entre paquetes.
+
+## Instalación y plataformas
+
+```bash
+composer require puyu-pe/sipro-internal-api-core:^2.0
 ```
 
-### 2) `INVALID_SIGNATURE`
+Core admite PHP >=8.1 y se verifica en PHP 8.1, 8.2, 8.3 y 8.4. No requiere Laravel,
+CodeIgniter, una base de datos ni herramientas de clonado para utilizar DTOs o firmar
+solicitudes. PHPUnit es una dependencia de desarrollo, no del consumidor.
 
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "INVALID_SIGNATURE",
-    "message": "Invalid request signature."
-  }
-}
-```
+| Aplicación objetivo | Paquetes necesarios según su función |
+|---|---|
+| Sipro, cliente de la API (PHP 8.4) | core |
+| Yures y Yubus (PHP 8.3 / Laravel 12) | core + bridge Laravel; clone-db si se usa clonado |
+| Yubiz (PHP 8.2 / Pocketarc CI3 3.3) | core + bridge CI3; clone-db si se usa clonado |
 
-## Notas de seguridad
-
-- **No loguear secrets** (ni secretos HMAC ni credenciales de DB).
-- **No exponer connection strings** ni tokens sensibles en `error.details`.
-- Usa `keyId` para resolver secretos de forma rotativa y segura.
-
-## Versionado y compatibilidad
-
-- Este paquete está orientado al contrato `/internal/v1`.
-- Cambios incompatibles deben versionarse como nueva versión mayor del paquete y/o nueva ruta (`/internal/v2`).
-- Mantén signer/verifier con el mismo formato canonical v1 para asegurar interoperabilidad.
+La compatibilidad de plataforma no sustituye la migración del contrato 1.x:
+actualice las restricciones Composer, excepciones y overrides de cada consumidor.

@@ -23,6 +23,10 @@ final class ProvisionModuleDTO
      */
     public static function fromArray(array $payload): self
     {
+        \PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation::fields($payload, [
+            'id' => '?int', 'externalId' => '?string', 'name' => 'string', 'description' => 'string',
+            'price' => 'number', 'isUnlimited' => 'bool', 'customPrice' => '?number', 'quantity' => 'int',
+        ], 'modules.');
         return new self(
             id: isset($payload['id']) ? (int) $payload['id'] : null,
             externalId: isset($payload['externalId']) ? (string) $payload['externalId'] : null,

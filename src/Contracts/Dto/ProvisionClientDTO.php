@@ -18,6 +18,9 @@ final class ProvisionClientDTO
      */
     public static function fromArray(array $payload): self
     {
+        \PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation::fields($payload, [
+            'ruc' => 'string', 'businessName' => 'string', 'tradeName' => 'string',
+        ], 'client.');
         return new self(
             ruc: (string) ($payload['ruc'] ?? ''),
             businessName: (string) ($payload['businessName'] ?? ''),

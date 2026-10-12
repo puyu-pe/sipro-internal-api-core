@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 
+use PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation;
+
 final class ProvisionProjectDTO
 {
     /**
@@ -39,6 +41,15 @@ final class ProvisionProjectDTO
      */
     public static function fromArray(array $payload): self
     {
+        RequestValidation::identity($payload, 'project.');
+        RequestValidation::requiredString($payload, 'code', 'project.');
+        RequestValidation::fields($payload, [
+            'name' => 'string', 'description' => 'string', 'billingCycle' => 'string', 'priceAgreed' => 'number',
+            'startDate' => 'string', 'renewalDate' => '?string', 'execStatus' => 'string', 'isActive' => 'bool',
+            'accessUrlCustom' => '?string', 'accessUrls' => 'array', 'logo' => '?string', 'address' => '?string',
+            'phone' => '?string', 'email' => '?string', 'ubigeo' => '?string', 'latitud' => '?number',
+            'longitud' => '?number', 'color' => '?string', 'notes' => '?string',
+        ], 'project.');
         $accessUrls = is_array($payload['accessUrls'] ?? null) ? $payload['accessUrls'] : [];
 
         return new self(
@@ -53,7 +64,7 @@ final class ProvisionProjectDTO
             isActive: (bool) ($payload['isActive'] ?? false),
             accessUrlCustom: isset($payload['accessUrlCustom']) ? (string) $payload['accessUrlCustom'] : null,
             accessUrls: $accessUrls,
-            resolveKey: isset($payload['resolveKey']) ? (string) $payload['resolveKey'] : null,
+            resolveKey: $payload['resolveKey'],
             logo: isset($payload['logo']) ? (string) $payload['logo'] : null,
             address: isset($payload['address']) ? (string) $payload['address'] : null,
             phone: isset($payload['phone']) ? (string) $payload['phone'] : null,

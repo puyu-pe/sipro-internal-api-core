@@ -10,7 +10,7 @@ use PuyuPe\SiproInternalApiCore\Contracts\Dto\ImpersonableUserSearchRequestDTO;
 use PuyuPe\SiproInternalApiCore\Contracts\Dto\ImpersonableUserSearchResponseDTO;
 use PuyuPe\SiproInternalApiCore\Contracts\Dto\ImpersonationRequestDTO;
 use PuyuPe\SiproInternalApiCore\Contracts\Dto\ImpersonationResponseDTO;
-use PuyuPe\SiproInternalApiCore\Errors\InternalApiError;
+use PuyuPe\SiproInternalApiCore\Errors\InternalApiException;
 
 final class ImpersonationDTOTest extends TestCase
 {
@@ -47,9 +47,9 @@ final class ImpersonationDTOTest extends TestCase
         self::assertNull($dto->durationMinutes);
     }
 
-    public function testFromArraysThrowsForEmptyAppKey(): void
+    public function testFromArraysThrowsForEmptyResolveKey(): void
     {
-        $this->expectException(InternalApiError::class);
+        $this->expectException(InternalApiException::class);
         ImpersonationRequestDTO::fromArray([
             'resolveKey' => '',
             'projectCode' => 'YUBUS',
@@ -59,7 +59,7 @@ final class ImpersonationDTOTest extends TestCase
 
     public function testFromArraysThrowsForEmptyProjectCode(): void
     {
-        $this->expectException(InternalApiError::class);
+        $this->expectException(InternalApiException::class);
         ImpersonationRequestDTO::fromArray([
             'resolveKey' => 'yubus-app-001',
             'projectCode' => '',
@@ -69,7 +69,7 @@ final class ImpersonationDTOTest extends TestCase
 
     public function testFromArraysThrowsForTargetUserIdZero(): void
     {
-        $this->expectException(InternalApiError::class);
+        $this->expectException(InternalApiException::class);
         ImpersonationRequestDTO::fromArray([
             'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',
@@ -79,7 +79,7 @@ final class ImpersonationDTOTest extends TestCase
 
     public function testFromArraysThrowsForNegativeTargetUserId(): void
     {
-        $this->expectException(InternalApiError::class);
+        $this->expectException(InternalApiException::class);
         ImpersonationRequestDTO::fromArray([
             'resolveKey' => 'yubus-app-001',
             'projectCode' => 'YUBUS',

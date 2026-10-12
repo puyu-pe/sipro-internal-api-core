@@ -18,6 +18,7 @@ final class TenantExportRequestDTO
      */
     public static function fromArray(array $payload): self
     {
+        \PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation::tenant($payload);
         return new self(
             resolveKey: (string) ($payload['resolveKey'] ?? ''),
             projectCode: (string) ($payload['projectCode'] ?? ''),

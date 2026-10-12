@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace PuyuPe\SiproInternalApiCore\Contracts\Dto;
 
 use PuyuPe\SiproInternalApiCore\Contracts\Validation\ValidationResult;
+use PuyuPe\SiproInternalApiCore\Contracts\Validation\RequestValidation;
+use PuyuPe\SiproInternalApiCore\Errors\InternalApiException;
 use PuyuPe\SiproInternalApiCore\Errors\ErrorCode;
 use PuyuPe\SiproInternalApiCore\Errors\InternalApiError;
 
@@ -26,6 +28,9 @@ final class ImpersonationRequestDTO
      */
     public static function fromArray(array $payload): self
     {
+        RequestValidation::tenant($payload);
+        RequestValidation::integer($payload, 'targetUserId', true);
+        RequestValidation::integer($payload, 'durationMinutes');
         $resolveKey = (string) ($payload['resolveKey'] ?? '');
         $projectCode = (string) ($payload['projectCode'] ?? '');
         $targetUserId = isset($payload['targetUserId']) ? (int) $payload['targetUserId'] : 0;
@@ -34,28 +39,12 @@ final class ImpersonationRequestDTO
         $requestedAt = isset($payload['requestedAt']) ? (string) $payload['requestedAt'] : null;
         $durationMinutes = isset($payload['durationMinutes']) ? (int) $payload['durationMinutes'] : null;
 
-        if ($resolveKey === '') {
-            throw new InternalApiError(
-                ErrorCode::VALIDATION_ERROR,
-                'Invalid request payload.',
-                ['errors' => [['field' => 'resolveKey', 'code' => 'required', 'message' => 'resolveKey is required.']]]
-            );
-        }
-
-        if ($projectCode === '') {
-            throw new InternalApiError(
-                ErrorCode::VALIDATION_ERROR,
-                'Invalid request payload.',
-                ['errors' => [['field' => 'projectCode', 'code' => 'required', 'message' => 'projectCode is required.']]]
-            );
-        }
-
         if ($targetUserId <= 0) {
-            throw new InternalApiError(
+            throw new InternalApiException(new InternalApiError(
                 ErrorCode::VALIDATION_ERROR,
                 'Invalid request payload.',
                 ['errors' => [['field' => 'targetUserId', 'code' => 'required', 'message' => 'targetUserId must be a positive integer.']]]
-            );
+            ));
         }
 
         return new self(

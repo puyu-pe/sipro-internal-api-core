@@ -11,13 +11,12 @@ final class InMemoryNonceStore implements NonceStoreInterface
     /** @var array<string, int> */
     private array $entries = [];
 
-    public function has(string $nonce): bool
+    public function consume(string $nonceKey, int $ttlSeconds): bool
     {
-        return isset($this->entries[$nonce]) && $this->entries[$nonce] >= 0;
-    }
-
-    public function put(string $nonce, int $ttlSeconds): void
-    {
-        $this->entries[$nonce] = $ttlSeconds;
+        if (isset($this->entries[$nonceKey])) {
+            return false;
+        }
+        $this->entries[$nonceKey] = $ttlSeconds;
+        return true;
     }
 }
